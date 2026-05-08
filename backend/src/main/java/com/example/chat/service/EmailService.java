@@ -1,44 +1,81 @@
 package com.example.chat.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.io.IOException;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import com.sendgrid.Method;
+import com.sendgrid.Request;
+import com.sendgrid.Response;
+import com.sendgrid.SendGrid;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
 
 @Service
 public class EmailService {
-    @Autowired
-    private JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${sendgrid.api.key}")
+    private String sendGridApiKey;
+
+    @Value("${sendgrid.from.email}")
     private String fromEmail;
 
-    public void sendOtp(String email, String otp){
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom(fromEmail);
-        msg.setTo(email);
-        msg.setSubject("Your OTP Code");
-        msg.setText("your OTP is : " + otp + "\n\nvalid for 5 minuts");
+    private void sendEmail(String to, String subject, String body) {
 
-        mailSender.send(msg);
+        try {
+
+            Email from = new Email(fromEmail);
+            Email toEmail = new Email(to);
+
+            Content content = new Content("text/plain", body);
+
+            Mail mail = new Mail(from, subject, toEmail, content);
+
+            SendGrid sg = new SendGrid(sendGridApiKey);
+
+            Request request = new Request();
+
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+
+            Response response = sg.api(request);
+
+            System.out.println("Status Code: " + response.getStatusCode());
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to send email", e);
+        }
+    }
+
+    public void sendOtp(String email, String otp) {
+
+        String body =
+                "Your OTP is: " + otp +
+                "\n\nValid for 5 minutes.";
+
+        sendEmail(email, "Your OTP Code", body);
     }
 
     public void sendPasswordResetEmail(String email, String resetLink) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom(fromEmail);
-        msg.setTo(email);
-        msg.setSubject("Password Reset Request");
-        msg.setText("Click the link below to reset your password:\n\n" + resetLink + "\n\nThis link will expire in 1 hour.");
-        mailSender.send(msg);        
+
+        String body =
+                "Click the link below to reset your password:\n\n"
+                + resetLink +
+                "\n\nThis link will expire in 1 hour.";
+
+        sendEmail(email, "Password Reset Request", body);
     }
 
     public void sendPasswordResetOtp(String email, String otp) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setFrom(fromEmail);
-        msg.setTo(email);
-        msg.setSubject("Reset Password OTP");
-        msg.setText("Your password reset OTP is: " + otp + "\n\nValid for 10 minutes.");
-        mailSender.send(msg);
+        System.out.println("Password reset OTP mail method called");
+
+        String body =
+                "Your password reset OTP is: " + otp +
+                "\n\nValid for 10 minutes.";
+
+        sendEmail(email, "Reset Password OTP", body);
     }
 }
