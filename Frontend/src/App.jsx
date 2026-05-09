@@ -64,6 +64,7 @@ const THEME_OPTIONS = {
 };
 
 const App = () => {
+  console.log(import.meta.env.VITE_API_BASE_URL);
   const [pathname, setPathname] = useState(getCurrentPath);
   const [isLoading, setIsLoading] = useState(() => Boolean(session.getToken()));
   const [pendingSignup, setPendingSignup] = useState(() => {
