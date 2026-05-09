@@ -1,51 +1,31 @@
 package com.example.chat.service;
 
-import java.io.IOException;
-
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-
-import com.sendgrid.Method;
-import com.sendgrid.Request;
-import com.sendgrid.Response;
-import com.sendgrid.SendGrid;
-import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-import com.sendgrid.helpers.mail.objects.Email;
 
 @Service
 public class EmailService {
 
-    @Value("${sendgrid.api.key}")
-    private String sendGridApiKey;
-
-    @Value("${sendgrid.from.email}")
-    private String fromEmail;
+    @Autowired
+    private JavaMailSender mailSender;
 
     private void sendEmail(String to, String subject, String body) {
 
         try {
 
-            Email from = new Email(fromEmail);
-            Email toEmail = new Email(to);
+            SimpleMailMessage message = new SimpleMailMessage();
 
-            Content content = new Content("text/plain", body);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
 
-            Mail mail = new Mail(from, subject, toEmail, content);
+            mailSender.send(message);
 
-            SendGrid sg = new SendGrid(sendGridApiKey);
+            System.out.println("Email sent successfully");
 
-            Request request = new Request();
-
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-
-            Response response = sg.api(request);
-
-            System.out.println("Status Code: " + response.getStatusCode());
-
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Failed to send email", e);
         }
     }
@@ -70,7 +50,6 @@ public class EmailService {
     }
 
     public void sendPasswordResetOtp(String email, String otp) {
-        System.out.println("Password reset OTP mail method called");
 
         String body =
                 "Your password reset OTP is: " + otp +
