@@ -1,3 +1,4 @@
+// pages/VerifyOtp.jsx
 import { useState } from 'react';
 import AuthCard from '../components/AuthCard';
 import InputField from '../components/InputField';
@@ -51,13 +52,9 @@ const VerifyOtp = ({ signupData, onNavigateToLogin, onRegistrationSuccess }) => 
 
   return (
     <AuthCard title="Verify OTP" showBack onBack={onNavigateToLogin}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
 
-        <p style={{
-          fontSize: '13px',
-          color: '#888',
-          marginBottom: '10px'
-        }}>
+        <p className="text-sm text-stone-500 mb-2">
           OTP sent to {email || 'your email'}
         </p>
 
@@ -75,15 +72,7 @@ const VerifyOtp = ({ signupData, onNavigateToLogin, onRegistrationSuccess }) => 
         <button
           type="submit"
           disabled={loading}
-          style={{
-            width: '100%',
-            background: '#111',
-            color: '#fff',
-            borderRadius: '10px',
-            padding: '15px',
-            cursor: 'pointer',
-            opacity: loading ? 0.6 : 1
-          }}
+          className="w-full bg-black text-white rounded-xl py-4 cursor-pointer disabled:opacity-60"
         >
           {loading ? "Verifying..." : "Verify OTP"}
         </button>

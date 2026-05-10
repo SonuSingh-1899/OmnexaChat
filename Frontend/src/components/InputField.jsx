@@ -1,3 +1,4 @@
+// components/InputField.jsx
 import { useState } from 'react';
 
 const InputField = ({
@@ -15,27 +16,16 @@ const InputField = ({
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{
-        display: 'block',
-        fontSize: '11px',
-        fontWeight: 500,
-        color: error ? '#e24b4a' : '#aaa',
-        textTransform: 'uppercase',
-        letterSpacing: '0.8px',
-        marginBottom: '6px',
-        fontFamily: "'DM Sans', sans-serif",
-      }}>
+    <div className="mb-5">
+      <label className={`block text-[11px] font-medium uppercase tracking-[0.8px] mb-1.5 font-sans ${
+        error ? 'text-red-500' : 'text-stone-400'
+      }`}>
         {label}
       </label>
 
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        borderBottom: `1.5px solid ${error ? '#e24b4a' : focused ? '#111' : '#e0ddd8'}`,
-        paddingBottom: '8px',
-        transition: 'border-color 0.2s',
-      }}>
+      <div className={`flex items-center pb-2 transition-colors duration-200 ${
+        error ? 'border-b-[1.5px] border-red-500' : focused ? 'border-b-[1.5px] border-black' : 'border-b-[1.5px] border-[#e0ddd8]'
+      }`}>
         <input
           type={inputType}
           name={name}
@@ -44,31 +34,13 @@ const InputField = ({
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={{
-            border: 'none',
-            background: 'transparent',
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '14px',
-            color: '#1a1a1a',
-            outline: 'none',
-            width: '100%',
-            fontWeight: 400,
-          }}
+          className="border-none bg-transparent font-sans text-sm text-[#1a1a1a] outline-none w-full font-normal"
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0',
-              color: '#bbb',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-            }}
+            className="bg-none border-none cursor-pointer p-0 text-stone-400 flex-shrink-0 flex items-center"
           >
             {showPassword ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -86,12 +58,7 @@ const InputField = ({
       </div>
 
       {error && (
-        <p style={{
-          color: '#e24b4a',
-          fontSize: '11px',
-          marginTop: '4px',
-          fontFamily: "'DM Sans', sans-serif",
-        }}>
+        <p className="text-red-500 text-[11px] mt-1 font-sans">
           {error}
         </p>
       )}

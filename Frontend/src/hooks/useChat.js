@@ -1,30 +1,59 @@
-import { useState, useCallback, useRef } from 'react';
+// hooks/useChat.js (Updated)
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
-const sortMessages = (items) =>
-  [...items].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-const useChat = ({ currentUser }) => {
+export default function useChat({ user }) {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const selectedUserRef = useRef(null);
+  const selectedRef = useRef(null);
 
-  const selectUser = useCallback(async (user) => {
-    setSelectedUser(user);
-    selectedUserRef.current = user;
-    setMessages([]);
-    setLoading(true);
-
+  const fetchUsers = useCallback(async () => {
+    if (!user?.email) return;
+    
     try {
-      const conversation = await chatApi.getConversation(user.email);
-      setMessages(sortMessages(conversation));
+      const userList = await profileApi.listUsers();
+      console.log('All users:', userList);
+      console.log('Current user email:', user?.email);
+      
+      // Filter out current user from the list
+      const filteredUsers = userList.filter(u => u.email !== user?.email);
+      console.log('Filtered users:', filteredUsers);
+      setUsers(filteredUsers);
     } catch (err) {
-      console.error('Failed to fetch conversation:', err);
+      console.error('Failed to fetch users:', err);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    if (user?.email) {
+      fetchUsers();
+    }
+  }, [fetchUsers, user?.email]);
+
+  const selectUser = useCallback(async (u) => {
+    if (!u || !u.email) {
+      console.error('Invalid user selected:', u);
+      return;
+    }
+    
+    console.log('Selecting user:', u);
+    setSelectedUser(u);
+    selectedRef.current = u;
+    setLoading(true);
+    
+    try {
+      const conv = await chatApi.getConversation(u.email);
+      console.log('Conversation loaded:', conv);
+      setMessages(conv.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+      // Agar conversation nahi milti to empty array set karo
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -32,143 +61,91 @@ const useChat = ({ currentUser }) => {
 
   const clearSelectedUser = useCallback(() => {
     setSelectedUser(null);
-    selectedUserRef.current = null;
+    selectedRef.current = null;
     setMessages([]);
-    setNewMessage('');
-  }, []);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const list = await profileApi.listUsers();
-      setUsers(list);
-    } catch (err) {
-      console.error('Failed to fetch users:', err);
-    }
-  }, []);
-
-  const handleMessageReceived = useCallback((msg) => {
-    setMessages((prev) => {
-      const exists = prev.some(
-        (item) =>
-          item.id === msg.id ||
-          (item.timestamp === msg.timestamp &&
-            item.senderEmail === msg.senderEmail &&
-            item.receiverEmail === msg.receiverEmail &&
-            item.content === msg.content)
-      );
-
-      if (exists) {
-        return prev;
-      }
-
-      return sortMessages([...prev, msg]);
-    });
-  }, []);
-
-  const handleUserLastMessageUpdate = useCallback((msg) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.email === msg.senderEmail
-          ? { ...u, lastMessage: msg.content, lastMessageTime: msg.timestamp }
-          : u
-      )
-    );
   }, []);
 
   const { isConnected } = useWebSocket({
-    currentUserEmail: currentUser?.email,
-    selectedUserRef,
-    onMessageReceived: handleMessageReceived,
-    onUserLastMessageUpdate: handleUserLastMessageUpdate,
+    userEmail: user?.email,
+    selectedUserRef: selectedRef,
+    onMessage: (msg) => {
+      console.log('New message received:', msg);
+      setMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      });
+      
+      // Update last message in users list
+      setUsers(prev => prev.map(u => 
+        u.email === msg.senderEmail 
+          ? { ...u, lastMessage: msg.content, lastMessageTime: msg.timestamp } 
+          : u
+      ));
+    },
   });
 
-  const sendMessage = useCallback(
-    async (e) => {
-      e.preventDefault();
+  const sendMessage = useCallback(async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedUser || sending) return;
+    
+    const content = newMessage.trim();
+    setNewMessage('');
+    setSending(true);
+    
+    // Optimistic update
+    const tempId = Date.now();
+    const tempMessage = {
+      id: tempId,
+      senderEmail: user.email,
+      receiverEmail: selectedUser.email,
+      content,
+      timestamp: new Date().toISOString(),
+      isTemp: true,
+    };
+    
+    setMessages(prev => [...prev, tempMessage]);
+    
+    try {
+      const saved = await chatApi.sendMessage({ 
+        receiverEmail: selectedUser.email, 
+        content 
+      });
+      console.log('Message sent successfully:', saved);
+      
+      setMessages(prev => 
+        prev.filter(m => m.id !== tempId)
+          .concat(saved)
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+      );
+      
+      // Update last message in users list
+      setUsers(prev => prev.map(u => 
+        u.email === selectedUser.email 
+          ? { ...u, lastMessage: content, lastMessageTime: new Date().toISOString() } 
+          : u
+      ));
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setMessages(prev => 
+        prev.map(m => m.id === tempId ? { ...m, error: true, isTemp: false } : m)
+      );
+    } finally {
+      setSending(false);
+    }
+  }, [newMessage, selectedUser, sending, user?.email]);
 
-      if (!newMessage.trim() || !selectedUser || sending) {
-        return;
-      }
-
-      const content = newMessage.trim();
-      const tempId = `temp-${Date.now()}`;
-      const optimisticTimestamp = new Date().toISOString();
-
-      setNewMessage('');
-      setSending(true);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: tempId,
-          senderEmail: currentUser.email,
-          receiverEmail: selectedUser.email,
-          content,
-          timestamp: optimisticTimestamp,
-          type: 'CHAT',
-          isTemp: true,
-        },
-      ]);
-
-      try {
-        const savedMessage = await chatApi.sendMessage({
-          receiverEmail: selectedUser.email,
-          content,
-        });
-
-        setMessages((prev) => {
-          const withoutTemp = prev.filter((m) => m.id !== tempId);
-
-          if (!savedMessage) {
-            return withoutTemp;
-          }
-
-          const exists = withoutTemp.some((m) => m.id === savedMessage.id);
-          if (exists) {
-            return withoutTemp;
-          }
-
-          return sortMessages([...withoutTemp, savedMessage]);
-        });
-
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.email === selectedUser.email
-              ? {
-                  ...u,
-                  lastMessage: content,
-                  lastMessageTime: savedMessage?.timestamp ?? optimisticTimestamp,
-                }
-              : u
-          )
-        );
-      } catch (err) {
-        console.error('Failed to send:', err);
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId ? { ...m, error: true, isTemp: false } : m
-          )
-        );
-      } finally {
-        setSending(false);
-      }
-    },
-    [newMessage, selectedUser, sending, currentUser]
-  );
-
-  return {
-    users,
-    selectedUser,
-    messages,
-    newMessage,
-    setNewMessage,
-    loading,
-    sending,
-    isConnected,
+  return { 
+    users, 
+    selectedUser, 
+    messages, 
+    newMessage, 
+    setNewMessage, 
+    loading, 
+    sending, 
+    isConnected, 
     fetchUsers,
-    selectUser,
-    clearSelectedUser,
-    sendMessage,
+    selectUser, 
+    clearSelectedUser, 
+    sendMessage 
   };
-};
-
-export default useChat;
+}

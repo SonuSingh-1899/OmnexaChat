@@ -1,3 +1,4 @@
+// pages/Signup.jsx
 import { useState } from 'react';
 import AuthCard from '../components/AuthCard';
 import InputField from '../components/InputField';
@@ -23,7 +24,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = 'name is required';
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -46,52 +47,52 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
     return newErrors;
   };
 
-    const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
+      setErrors(newErrors);
+      return;
     }
 
     try {
-        setLoading(true);
+      setLoading(true);
 
-        await authApi.sendOtp(formData.email.trim());
+      await authApi.sendOtp(formData.email.trim());
 
-        alert("OTP sent to your email");
+      alert("OTP sent to your email");
 
-        onNavigateToOtp?.({
-          name: formData.name.trim(),
-          email: formData.email.trim(),
-          password: formData.password
-        });
+      onNavigateToOtp?.({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        password: formData.password
+      });
 
     } catch (err) {
-        console.error(err);
+      console.error(err);
 
-        if (err.response) {
+      if (err.response) {
         alert(err.response.data.message || "Signup failed");
-        } else {
+      } else {
         alert("Server error");
-        }
+      }
 
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
   return (
     <AuthCard title="Sign Up" showBack onBack={onNavigateToLogin}>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
 
         <InputField
-          label="name"
-          name="name"                         
-          value={formData.name}          
+          label="Name"
+          name="name"
+          value={formData.name}
           onChange={handleChange}
-          error={errors.name}                
+          error={errors.name}
         />
 
         <InputField
@@ -124,40 +125,19 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
         <button
           type="submit"
           disabled={loading}
-          style={{
-            width: '100%',
-            background: '#111',
-            color: '#fff',
-            borderRadius: '10px',
-            padding: '15px',
-            cursor: 'pointer',
-            marginTop: '4px',
-            opacity: loading ? 0.6 : 1
-          }}
+          className="w-full bg-black text-white rounded-xl py-4 cursor-pointer mt-1 disabled:opacity-60"
         >
           {loading ? "Creating account..." : "Sign Up"}
         </button>
 
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: '16px',
-        }}>
+        <div className="flex justify-center mt-4">
           <a
             href="#"
             onClick={(e) => {
               e.preventDefault();
               onNavigateToForgotPassword?.();
             }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              color: '#5f564c',
-              textDecoration: 'none',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
+            className="inline-flex items-center gap-1.5 text-stone-500 no-underline text-xs font-medium"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="9" />
@@ -168,17 +148,12 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
           </a>
         </div>
 
-        <div style={{
-          textAlign: 'center',
-          marginTop: '20px',
-          fontSize: '13px',
-          color: '#aaa',
-        }}>
-          Already have any account?{' '}
+        <div className="text-center mt-5 text-sm text-stone-400">
+          Already have an account?{' '}
           <a
             href="#"
             onClick={e => { e.preventDefault(); onNavigateToLogin?.(); }}
-            style={{ color: '#111', textDecoration: 'none', fontWeight: 500 }}
+            className="text-black no-underline font-medium"
           >
             Sign In
           </a>

@@ -1,3 +1,4 @@
+// pages/ForgotPassword.jsx
 import { useState } from 'react';
 import { profileApi } from '../lib/api';
 
@@ -41,36 +42,11 @@ const ForgotPassword = ({ onNavigateToLogin, onOtpSent }) => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f5f3ef',
-      fontFamily: "'DM Sans', sans-serif",
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-    }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        background: '#fff',
-        borderRadius: '24px',
-        padding: '40px 32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-      }}>
+    <div className="min-h-screen bg-[#f5f3ef] font-sans flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-2xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <button
           onClick={onNavigateToLogin}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            color: '#aaa',
-            fontSize: '13px',
-            marginBottom: '32px',
-          }}
+          className="bg-none border-none cursor-pointer flex items-center gap-1.5 text-stone-400 text-[13px] mb-8"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
@@ -78,48 +54,26 @@ const ForgotPassword = ({ onNavigateToLogin, onOtpSent }) => {
           Back to Login
         </button>
 
-        <h1 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '28px',
-          fontWeight: 400,
-          color: '#111',
-          marginBottom: '8px',
-        }}>
+        <h1 className="font-serif text-[28px] font-normal text-black mb-2">
           Forgot Password?
         </h1>
-        <p style={{
-          fontSize: '13px',
-          color: '#aaa',
-          marginBottom: '32px',
-        }}>
-          Enter your email and we&apos;ll send you an OTP to reset your password.
+        <p className="text-[13px] text-stone-400 mb-8">
+          Enter your email and we'll send you an OTP to reset your password.
         </p>
 
         {message.text && (
-          <div style={{
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            background: message.type === 'success' ? '#e8f5e9' : '#ffebee',
-            color: message.type === 'success' ? '#2e7d32' : '#c62828',
-            fontSize: '13px',
-            textAlign: 'center',
-          }}>
+          <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
+            message.type === 'success' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
             {message.text}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '28px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 500,
-              color: '#aaa',
-              textTransform: 'uppercase',
-              letterSpacing: '0.8px',
-              marginBottom: '6px',
-            }}>
+          <div className="mb-7">
+            <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
               Email Address
             </label>
             <input
@@ -127,33 +81,14 @@ const ForgotPassword = ({ onNavigateToLogin, onOtpSent }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e8e6e1',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontFamily: "'DM Sans', sans-serif",
-                outline: 'none',
-              }}
+              className="w-full p-3 border border-stone-200 rounded-lg text-sm font-sans outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: '100%',
-              background: '#111',
-              color: '#fff',
-              padding: '14px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
+            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Sending...' : 'Send OTP'}
           </button>

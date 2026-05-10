@@ -1,3 +1,4 @@
+// pages/ResetPassword.jsx
 import { useState } from 'react';
 import { profileApi } from '../lib/api';
 
@@ -74,68 +75,31 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f5f3ef',
-      fontFamily: "'DM Sans', sans-serif",
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-    }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        background: '#fff',
-        borderRadius: '24px',
-        padding: '40px 32px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-      }}>
-        <h1 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '24px',
-          fontWeight: 400,
-          color: '#111',
-          marginBottom: '8px',
-        }}>
+    <div className="min-h-screen bg-[#f5f3ef] font-sans flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-2xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+        <h1 className="font-serif text-2xl font-normal text-black mb-2">
           {isSuccess ? 'Password Reset!' : 'Reset Password'}
         </h1>
-        <p style={{
-          fontSize: '13px',
-          color: '#aaa',
-          marginBottom: '32px',
-        }}>
+        <p className="text-[13px] text-stone-400 mb-8">
           {isSuccess
             ? 'Your password has been changed successfully.'
             : `Enter the OTP sent to ${email || 'your email'} and set a new password.`}
         </p>
 
         {message.text && (
-          <div style={{
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            background: message.type === 'success' ? '#e8f5e9' : '#ffebee',
-            color: message.type === 'success' ? '#2e7d32' : '#c62828',
-            fontSize: '13px',
-            textAlign: 'center',
-          }}>
+          <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
+            message.type === 'success' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
             {message.text}
           </div>
         )}
 
         {!isSuccess && email && (
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '11px',
-                fontWeight: 500,
-                color: '#aaa',
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px',
-                marginBottom: '6px',
-              }}>
+            <div className="mb-5">
+              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
                 OTP
               </label>
               <input
@@ -146,28 +110,12 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
                   setMessage({ text: '', type: '' });
                 }}
                 placeholder="Enter 6-digit OTP"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e8e6e1',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontFamily: "'DM Sans', sans-serif",
-                  outline: 'none',
-                }}
+                className="w-full p-3 border border-stone-200 rounded-lg text-sm font-sans outline-none"
               />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '11px',
-                fontWeight: 500,
-                color: '#aaa',
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px',
-                marginBottom: '6px',
-              }}>
+            <div className="mb-5">
+              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
                 New Password
               </label>
               <input
@@ -176,33 +124,17 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
                 value={formData.newPassword}
                 onChange={handleChange}
                 placeholder="Minimum 6 characters"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `1px solid ${errors.newPassword ? '#c62828' : '#e8e6e1'}`,
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontFamily: "'DM Sans', sans-serif",
-                  outline: 'none',
-                }}
+                className={`w-full p-3 rounded-lg text-sm font-sans outline-none ${
+                  errors.newPassword ? 'border-red-600' : 'border-stone-200'
+                } border`}
               />
               {errors.newPassword && (
-                <p style={{ color: '#c62828', fontSize: '11px', marginTop: '4px' }}>
-                  {errors.newPassword}
-                </p>
+                <p className="text-red-600 text-[11px] mt-1">{errors.newPassword}</p>
               )}
             </div>
 
-            <div style={{ marginBottom: '28px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '11px',
-                fontWeight: 500,
-                color: '#aaa',
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px',
-                marginBottom: '6px',
-              }}>
+            <div className="mb-7">
+              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
                 Confirm Password
               </label>
               <input
@@ -211,38 +143,19 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="Re-enter your password"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `1px solid ${errors.confirmPassword ? '#c62828' : '#e8e6e1'}`,
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontFamily: "'DM Sans', sans-serif",
-                  outline: 'none',
-                }}
+                className={`w-full p-3 rounded-lg text-sm font-sans outline-none ${
+                  errors.confirmPassword ? 'border-red-600' : 'border-stone-200'
+                } border`}
               />
               {errors.confirmPassword && (
-                <p style={{ color: '#c62828', fontSize: '11px', marginTop: '4px' }}>
-                  {errors.confirmPassword}
-                </p>
+                <p className="text-red-600 text-[11px] mt-1">{errors.confirmPassword}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              style={{
-                width: '100%',
-                background: '#111',
-                color: '#fff',
-                padding: '14px',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-                fontSize: '14px',
-                fontWeight: 500,
-              }}
+              className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? 'Resetting...' : 'Reset Password'}
             </button>
@@ -252,17 +165,7 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
         {isSuccess && (
           <button
             onClick={onNavigateToLogin}
-            style={{
-              width: '100%',
-              background: '#111',
-              color: '#fff',
-              padding: '14px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
+            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer"
           >
             Go to Login
           </button>
@@ -271,17 +174,7 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
         {!email && !isSuccess && (
           <button
             onClick={onNavigateToForgotPassword}
-            style={{
-              width: '100%',
-              background: '#111',
-              color: '#fff',
-              padding: '14px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 500,
-            }}
+            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer"
           >
             Back to Forgot Password
           </button>

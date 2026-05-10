@@ -82,81 +82,45 @@ const ChangePassword = ({ theme = defaultTheme, onNavigateToDashboard, onSuccess
   };
 
   return (
-    <div className="change-password-page" style={{
-      minHeight: '100vh',
+    <div className="min-h-screen" style={{
       background: theme.pageBackground,
       fontFamily: "'DM Sans', sans-serif",
       color: theme.text,
     }}>
-      {/* Header */}
-      <div className="change-password-header" style={{
+      <div className="flex flex-col md:flex-row items-start md:items-center p-4 md:p-6 border-b" style={{
         background: theme.surface,
-        borderBottom: `1px solid ${theme.border}`,
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
+        borderBottomColor: theme.border,
       }}>
         <button
           onClick={onNavigateToDashboard}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: theme.text,
-            fontSize: '14px',
-          }}
+          className="bg-none border-none cursor-pointer flex items-center gap-2 text-sm"
+          style={{ color: theme.text }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
           Back
         </button>
-        <h1 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '20px',
-          fontWeight: 400,
-          margin: '0 auto',
-          color: theme.text,
-        }}>
+        <h1 className="font-serif text-xl font-normal m-0 md:mx-auto" style={{ color: theme.text }}>
           Change Password
         </h1>
-        <div style={{ width: '70px' }} />
+        <div className="hidden md:block w-[70px]" />
       </div>
 
-      {/* Form */}
-      <div className="change-password-content" style={{
-        maxWidth: '400px',
-        margin: '60px auto',
-        padding: '0 24px',
-      }}>
+      <div className="max-w-md mx-auto my-8 md:my-16 px-6">
         {message.text && (
-          <div style={{
-            padding: '12px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            background: message.type === 'success' ? '#e8f5e9' : '#ffebee',
-            color: message.type === 'success' ? '#2e7d32' : '#c62828',
-            fontSize: '13px',
-            textAlign: 'center',
-          }}>
+          <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
+            message.type === 'success' 
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
             {message.text}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 500,
-              color: theme.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.8px',
-              marginBottom: '6px',
-            }}>
+          <div className="mb-6">
+            <label className="block text-[11px] font-medium uppercase tracking-[0.8px] mb-1.5" style={{ color: theme.muted }}>
               Current Password
             </label>
             <input
@@ -164,35 +128,20 @@ const ChangePassword = ({ theme = defaultTheme, onNavigateToDashboard, onSuccess
               name="currentPassword"
               value={formData.currentPassword}
               onChange={handleChange}
+              className="w-full p-3 rounded-lg text-sm font-sans outline-none"
               style={{
-                width: '100%',
-                padding: '12px',
                 border: `1px solid ${errors.currentPassword ? '#c62828' : theme.border}`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontFamily: "'DM Sans', sans-serif",
-                outline: 'none',
                 background: theme.surface,
                 color: theme.text,
               }}
             />
             {errors.currentPassword && (
-              <p style={{ color: '#c62828', fontSize: '11px', marginTop: '4px' }}>
-                {errors.currentPassword}
-              </p>
+              <p className="text-red-600 text-[11px] mt-1">{errors.currentPassword}</p>
             )}
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 500,
-              color: theme.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.8px',
-              marginBottom: '6px',
-            }}>
+          <div className="mb-6">
+            <label className="block text-[11px] font-medium uppercase tracking-[0.8px] mb-1.5" style={{ color: theme.muted }}>
               New Password
             </label>
             <input
@@ -200,35 +149,20 @@ const ChangePassword = ({ theme = defaultTheme, onNavigateToDashboard, onSuccess
               name="newPassword"
               value={formData.newPassword}
               onChange={handleChange}
+              className="w-full p-3 rounded-lg text-sm font-sans outline-none"
               style={{
-                width: '100%',
-                padding: '12px',
                 border: `1px solid ${errors.newPassword ? '#c62828' : theme.border}`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontFamily: "'DM Sans', sans-serif",
-                outline: 'none',
                 background: theme.surface,
                 color: theme.text,
               }}
             />
             {errors.newPassword && (
-              <p style={{ color: '#c62828', fontSize: '11px', marginTop: '4px' }}>
-                {errors.newPassword}
-              </p>
+              <p className="text-red-600 text-[11px] mt-1">{errors.newPassword}</p>
             )}
           </div>
 
-          <div style={{ marginBottom: '28px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 500,
-              color: theme.muted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.8px',
-              marginBottom: '6px',
-            }}>
+          <div className="mb-7">
+            <label className="block text-[11px] font-medium uppercase tracking-[0.8px] mb-1.5" style={{ color: theme.muted }}>
               Confirm New Password
             </label>
             <input
@@ -236,61 +170,31 @@ const ChangePassword = ({ theme = defaultTheme, onNavigateToDashboard, onSuccess
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              className="w-full p-3 rounded-lg text-sm font-sans outline-none"
               style={{
-                width: '100%',
-                padding: '12px',
                 border: `1px solid ${errors.confirmPassword ? '#c62828' : theme.border}`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontFamily: "'DM Sans', sans-serif",
-                outline: 'none',
                 background: theme.surface,
                 color: theme.text,
               }}
             />
             {errors.confirmPassword && (
-              <p style={{ color: '#c62828', fontSize: '11px', marginTop: '4px' }}>
-                {errors.confirmPassword}
-              </p>
+              <p className="text-red-600 text-[11px] mt-1">{errors.confirmPassword}</p>
             )}
           </div>
 
           <button
             type="submit"
             disabled={loading}
+            className="w-full py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-              width: '100%',
               background: theme.accent,
               color: theme.accentText,
-              padding: '14px',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.6 : 1,
-              fontSize: '14px',
-              fontWeight: 500,
             }}
           >
             {loading ? 'Changing...' : 'Change Password'}
           </button>
         </form>
       </div>
-
-      <style>{`
-        @media (max-width: 720px) {
-          .change-password-header {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 12px;
-            padding: 16px !important;
-          }
-          .change-password-content {
-            margin: 28px auto !important;
-            padding: 0 16px 24px !important;
-            max-width: 100% !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

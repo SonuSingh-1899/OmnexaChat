@@ -41,7 +41,6 @@ const Dashboard = ({
     loading,
     sending,
     isConnected,
-    fetchUsers,
     selectUser,
     clearSelectedUser,
     sendMessage,
@@ -59,22 +58,17 @@ const Dashboard = ({
     if (isCompactMobile) setMobileMenuOpen(false);
   }, [isCompactMobile]);
 
-  // Users fetch karo sirf ek baar mount pe
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
   const showMobileListPage = isCompactMobile && !selectedUser;
   const showSidebarPanel = !isCompactMobile || !selectedUser;
   const showChatPanel = !isCompactMobile || Boolean(selectedUser);
 
   return (
     <div
-      className="dashboard-page"
+      className="dashboard-page min-h-screen flex flex-col overflow-hidden"
       style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        background: theme.pageBackground, fontFamily: "'DM Sans', sans-serif",
-        color: theme.text, overflow: 'hidden',
+        background: theme.pageBackground,
+        fontFamily: "'DM Sans', sans-serif",
+        color: theme.text,
       }}
     >
       <ChatNavbar
@@ -93,17 +87,15 @@ const Dashboard = ({
       {!isCompactMobile && mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.35)', zIndex: 998,
-          }}
+          className="fixed inset-0 bg-black/35 z-[998]"
         />
       )}
 
       {/* Main Layout */}
       <div
-        className={`dashboard-layout ${showMobileListPage ? 'dashboard-layout--mobile-list' : ''} ${isCompactMobile && selectedUser ? 'dashboard-layout--mobile-chat' : ''}`}
-        style={{ flex: 1, display: 'flex', minHeight: 0, padding: '18px', gap: '18px' }}
+        className={`flex-1 flex min-h-0 p-[18px] gap-[18px] ${
+          showMobileListPage ? 'dashboard-layout--mobile-list' : ''
+        } ${isCompactMobile && selectedUser ? 'dashboard-layout--mobile-chat' : ''}`}
       >
         {showSidebarPanel && (
           <ChatSidebar
@@ -120,11 +112,14 @@ const Dashboard = ({
 
         {showChatPanel && (
           <div
-            className={`dashboard-chat-window ${isCompactMobile ? 'dashboard-chat-window--mobile-page' : ''}`}
+            className={`flex-1 min-h-0 flex flex-col ${
+              isCompactMobile ? 'dashboard-chat-window--mobile-page' : ''
+            }`}
             style={{
-              flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-              background: theme.surface, border: `1px solid ${theme.border}`,
-              borderRadius: '32px', boxShadow: `0 18px 42px ${theme.shadow}`,
+              background: theme.surface,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '32px',
+              boxShadow: `0 18px 42px ${theme.shadow}`,
               overflow: 'hidden',
             }}
           >

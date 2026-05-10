@@ -1,3 +1,4 @@
+// pages/Settings.jsx
 const Settings = ({
   theme,
   currentThemeKey,
@@ -7,84 +8,45 @@ const Settings = ({
   onNavigateToChangePassword,
 }) => {
   return (
-    <div className="settings-page" style={{
-      minHeight: '100vh',
+    <div className="settings-page min-h-screen" style={{
       background: theme.pageBackground,
       fontFamily: "'DM Sans', sans-serif",
       color: theme.text,
     }}>
-      <div className="settings-header" style={{
+      <div className="settings-header flex items-center justify-between p-4 md:p-6 border-b" style={{
         background: theme.surface,
-        borderBottom: `1px solid ${theme.border}`,
-        padding: '16px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        borderBottomColor: theme.border,
       }}>
         <button
           onClick={onNavigateToDashboard}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            color: theme.text,
-            fontSize: '14px',
-          }}
+          className="bg-none border-none cursor-pointer flex items-center gap-2 text-sm"
+          style={{ color: theme.text }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
           Back to Chat
         </button>
-        <h1 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '22px',
-          fontWeight: 400,
-          margin: 0,
-        }}>
+        <h1 className="font-serif text-xl md:text-2xl font-normal m-0">
           Settings
         </h1>
-        <div className="settings-header-spacer" style={{ width: '110px' }} />
+        <div className="w-[70px] md:w-[110px]" />
       </div>
 
-      <div className="settings-content" style={{
-        maxWidth: '900px',
-        margin: '0 auto',
-        padding: '32px 24px 40px',
-        display: 'grid',
-        gap: '24px',
-      }}>
-        <section style={{
+      <div className="settings-content max-w-[900px] mx-auto p-6 md:p-8 space-y-6">
+        <section className="rounded-2xl p-6" style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
-          borderRadius: '24px',
-          padding: '24px',
           boxShadow: `0 16px 40px ${theme.shadow}`,
         }}>
-          <h2 style={{
-            margin: '0 0 8px',
-            fontFamily: "'Playfair Display', serif",
-            fontSize: '24px',
-            fontWeight: 400,
-          }}>
+          <h2 className="font-serif text-2xl font-normal mb-2 m-0">
             Theme
           </h2>
-          <p style={{
-            margin: '0 0 20px',
-            fontSize: '14px',
-            color: theme.muted,
-          }}>
+          <p className="text-sm mb-5" style={{ color: theme.muted }}>
             Choose one of the 3 UI colors for your chat app.
           </p>
 
-          <div className="settings-theme-grid" style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '16px',
-          }}>
+          <div className="settings-theme-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(themeOptions).map(([themeKey, option]) => {
               const isActive = currentThemeKey === themeKey;
 
@@ -93,58 +55,22 @@ const Settings = ({
                   key={themeKey}
                   type="button"
                   onClick={() => onThemeChange(themeKey)}
+                  className="p-[18px] rounded-2xl cursor-pointer text-left"
                   style={{
-                    padding: '18px',
-                    borderRadius: '20px',
                     border: `2px solid ${isActive ? option.accent : option.border}`,
                     background: option.surface,
-                    cursor: 'pointer',
-                    textAlign: 'left',
                     boxShadow: isActive ? `0 12px 24px ${option.shadow}` : 'none',
                   }}
                 >
-                  <div style={{
-                    display: 'flex',
-                    gap: '10px',
-                    marginBottom: '14px',
-                  }}>
-                    <span style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      background: option.accent,
-                      display: 'inline-block',
-                    }} />
-                    <span style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      background: option.subtle,
-                      display: 'inline-block',
-                      border: `1px solid ${option.border}`,
-                    }} />
-                    <span style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      background: option.pageBackground,
-                      display: 'inline-block',
-                      border: `1px solid ${option.border}`,
-                    }} />
+                  <div className="flex gap-2.5 mb-3.5">
+                    <span className="w-[22px] h-[22px] rounded-full" style={{ background: option.accent }} />
+                    <span className="w-[22px] h-[22px] rounded-full border" style={{ background: option.subtle, borderColor: option.border }} />
+                    <span className="w-[22px] h-[22px] rounded-full border" style={{ background: option.pageBackground, borderColor: option.border }} />
                   </div>
-                  <p style={{
-                    margin: '0 0 6px',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    color: option.text,
-                  }}>
+                  <p className="font-semibold text-[15px] m-0 mb-1.5" style={{ color: option.text }}>
                     {option.label}
                   </p>
-                  <p style={{
-                    margin: 0,
-                    fontSize: '12px',
-                    color: option.muted,
-                  }}>
+                  <p className="text-[12px] m-0" style={{ color: option.muted }}>
                     {isActive ? 'Currently active' : 'Tap to apply'}
                   </p>
                 </button>
@@ -153,67 +79,31 @@ const Settings = ({
           </div>
         </section>
 
-        <section style={{
+        <section className="rounded-2xl p-6" style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
-          borderRadius: '24px',
-          padding: '24px',
           boxShadow: `0 16px 40px ${theme.shadow}`,
         }}>
-          <h2 style={{
-            margin: '0 0 8px',
-            fontFamily: "'Playfair Display', serif",
-            fontSize: '24px',
-            fontWeight: 400,
-          }}>
+          <h2 className="font-serif text-2xl font-normal mb-2 m-0">
             Security
           </h2>
-          <p style={{
-            margin: '0 0 18px',
-            fontSize: '14px',
-            color: theme.muted,
-          }}>
+          <p className="text-sm mb-4" style={{ color: theme.muted }}>
             Password change option ab settings page ke andar hai.
           </p>
 
           <button
             type="button"
             onClick={onNavigateToChangePassword}
+            className="border-none rounded-2xl py-3.5 px-4 cursor-pointer text-sm font-semibold"
             style={{
               background: theme.accent,
               color: theme.accentText,
-              border: 'none',
-              borderRadius: '16px',
-              padding: '14px 18px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 600,
             }}
           >
             Change Password
           </button>
         </section>
       </div>
-
-      <style>{`
-        @media (max-width: 720px) {
-          .settings-header {
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 12px;
-            padding: 16px !important;
-          }
-          .settings-header-spacer {
-            display: none;
-          }
-          .settings-content {
-            padding: 20px 16px 28px !important;
-          }
-          .settings-theme-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

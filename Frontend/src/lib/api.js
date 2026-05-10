@@ -1,3 +1,4 @@
+// lib/api.js - Check karo ki ye functions sahi hain
 import axios from 'axios';
 
 const TOKEN_KEY = 'token';
@@ -13,9 +14,7 @@ const getRequiredEnv = (key) => {
 };
 
 export const API_BASE_URL = getRequiredEnv('VITE_API_BASE_URL');
-
 export const SOCKET_BASE_URL = getRequiredEnv('VITE_SOCKET_BASE_URL');
-
 export const SOCKET_ENDPOINT_URL = `${SOCKET_BASE_URL}/ws`;
 
 export const api = axios.create({
@@ -26,11 +25,9 @@ export const FORGOT_PASSWORD_EMAIL_KEY = 'forgotPasswordEmail';
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
-
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-
   return config;
 });
 
@@ -71,7 +68,7 @@ export const profileApi = {
     return data;
   },
   forgotPassword: async (email) => {
-      const { data } = await api.post(`/profile/forgot-password?email=${encodeURIComponent(email)}`);
+    const { data } = await api.post(`/profile/forgot-password?email=${encodeURIComponent(email)}`);
     return data;
   },
   resetPassword: async (email, otp, newPassword) => {
@@ -84,7 +81,10 @@ export const profileApi = {
 
 export const chatApi = {
   getConversation: async (otherEmail) => {
-    const { data } = await api.get(`/api/chat/conversation/${encodeURIComponent(otherEmail)}`);
+    // Ensure email is properly encoded
+    const encodedEmail = encodeURIComponent(otherEmail);
+    console.log('Fetching conversation for:', otherEmail, 'Encoded:', encodedEmail);
+    const { data } = await api.get(`/api/chat/conversation/${encodedEmail}`);
     return data;
   },
   sendMessage: async (payload) => {

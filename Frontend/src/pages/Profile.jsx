@@ -103,7 +103,6 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-stone-200">
-      {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-stone-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <button
           onClick={onNavigateToDashboard}
@@ -120,9 +119,7 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
         <div className="w-20" />
       </div>
 
-      {/* Main Content */}
       <div className="max-w-lg mx-auto px-6 py-8">
-        {/* Avatar Section */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-stone-800 to-stone-700 flex items-center justify-center text-white text-4xl font-medium shadow-lg">
             {formData.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || '?'}
@@ -132,7 +129,6 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
           </p>
         </div>
 
-        {/* Message Alert */}
         {message.text && (
           <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
             message.type === 'success' 
@@ -143,9 +139,7 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
           </div>
         )}
 
-        {/* Profile Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name Field */}
           <div>
             <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
               Name
@@ -172,7 +166,6 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
             )}
           </div>
 
-          {/* Bio Field */}
           <div>
             <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
               Bio
@@ -200,7 +193,6 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
             )}
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 pt-2">
             {isEditing ? (
               <>

@@ -1,3 +1,4 @@
+// App.jsx
 import { useCallback, useEffect, useState } from 'react';
 import './App.css';
 import Login from './pages/Login';
@@ -90,7 +91,6 @@ const App = () => {
   const [themeKey, setThemeKey] = useState(() => localStorage.getItem(UI_THEME_KEY) || 'sand');
   const currentTheme = THEME_OPTIONS[themeKey] || THEME_OPTIONS.sand;
 
-  // Ye helper React state ko browser URL ke saath sync karta hai.
   const navigateTo = useCallback((path, { replace = false } = {}) => {
     navigateToPath(path, { replace });
     setPathname(path);
@@ -179,7 +179,6 @@ const App = () => {
     const isKnownPath = pathname === '/' || KNOWN_ROUTES.has(pathname);
 
     if (currentUser) {
-      // Agar user logged in hai aur public route pe hai to dashboard pe bhejo
       if (PUBLIC_ROUTES.has(pathname) || pathname === ROUTES.dashboard) {
         nextPath = ROUTES.dashboard;
       } else if (!isKnownPath) {
@@ -238,17 +237,16 @@ const App = () => {
 
   if (isLoading) {
     return (
-      <div className="loading-screen">
-        <div className="loading-card">
-          <p className="eyebrow">Chat Application</p>
-          <h1>Preparing your workspace</h1>
-          <p>checking session ...........</p>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-stone-200 flex items-center justify-center">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl max-w-md w-full text-center border border-stone-200">
+          <p className="text-xs uppercase tracking-wider text-stone-500 mb-2">Chat Application</p>
+          <h1 className="text-xl font-serif text-stone-800 mb-2">Preparing your workspace</h1>
+          <p className="text-sm text-stone-400">checking session ...........</p>
         </div>
       </div>
     );
   }
 
-  // Public Routes
   if (pathname === ROUTES.login) {
     return (
       <Login
@@ -323,7 +321,6 @@ const App = () => {
     );
   }
 
-  // Protected Routes (require authentication)
   if (pathname === ROUTES.dashboard && currentUser) {
     return (
       <Dashboard
@@ -340,7 +337,6 @@ const App = () => {
   if (pathname === ROUTES.profile && currentUser) {
     return (
       <Profile
-        theme={currentTheme}
         user={currentUser}
         onUserUpdated={setCurrentUser}
         onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
