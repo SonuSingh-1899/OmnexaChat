@@ -99,6 +99,7 @@ const App = () => {
   const hydrateSession = useCallback(async () => {
     try {
       const user = await profileApi.getMe();
+      console.log("GET ME RESPONSE:", user);
       localStorage.setItem('user', JSON.stringify(user));
       setCurrentUser(user);
       setAuthNotice('');
@@ -233,11 +234,12 @@ const App = () => {
     setPendingSignup(null);
     setAuthNotice('Account created! Please login to your account');
     navigateTo(ROUTES.login, { replace: true });
+
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-stone-200 flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-amber-50 via-stone-100 to-stone-200 flex items-center justify-center">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl max-w-md w-full text-center border border-stone-200">
           <p className="text-xs uppercase tracking-wider text-stone-500 mb-2">Chat Application</p>
           <h1 className="text-xl font-serif text-stone-800 mb-2">Preparing your workspace</h1>

@@ -1,4 +1,6 @@
 // components/chat/ChatNavbar.jsx
+import UnionImg from  '../../assets/Union.png'
+
 const ChatNavbar = ({
   theme,
   user,
@@ -14,27 +16,19 @@ const ChatNavbar = ({
 
   return (
     <div
-      className="dashboard-navbar"
+      className="dashboard-navbar flex items-center justify-between gap-4 px-5 md:py-0 py-0"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-        padding: '16px 22px',
         background: theme.surface,
         borderBottom: `1px solid ${theme.border}`,
         boxShadow: `0 10px 32px ${theme.shadow}`,
       }}
     >
       {/* Brand */}
-      <div
-        className="dashboard-brand"
-        style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}
-      >
+      <div className="dashboard-brand flex items-center gap-3 flex-1 min-w-0">
         <button
           onClick={onOpenSidebar}
-          className="mobile-menu-btn"
-          style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+          className="mobile-menu-btn hidden bg-transparent border-none cursor-pointer p-2"
+          style={{ background: 'none', border: 'none' }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.text} strokeWidth="2">
             <line x1="3" y1="12" x2="21" y2="12" />
@@ -43,36 +37,23 @@ const ChatNavbar = ({
           </svg>
         </button>
 
-        <div
-          className="dashboard-brand-badge"
-          style={{
-            width: '44px', height: '44px', borderRadius: '14px',
-            background: theme.accent, color: theme.accentText,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 700, flexShrink: 0,
-          }}
-        >
-          {initials}
-        </div>
-
-        <div className="dashboard-brand-copy" style={{ minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontFamily: "'Playfair Display', serif", fontSize: '22px', fontWeight: 500 }}>
-            Messages
-          </h1>
-          <p style={{ margin: '4px 0 0', color: theme.muted, fontSize: '12px' }}>
-            Search users and continue your chat
-          </p>
-        </div>
+        {/* Logo Image Instead of Initials */}
+        <div className='p-2' >
+        <img
+          src={UnionImg}
+          alt="Logo"
+          className="w-11 h-11 rounded-xl object-contain shrink-0"
+          />
+          </div>
       </div>
 
       {/* Search */}
       {showSearch && (
         <div
-          className="dashboard-search"
+          className="dashboard-search flex-1 max-w-105 flex items-center gap-2.5 px-4 py-3 rounded-full"
           style={{
-            flex: 1, maxWidth: '420px', display: 'flex', alignItems: 'center',
-            gap: '10px', background: theme.subtle, border: `1px solid ${theme.border}`,
-            borderRadius: '999px', padding: '12px 16px',
+            background: theme.subtle,
+            border: `1px solid ${theme.border}`,
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.muted} strokeWidth="2">
@@ -80,44 +61,38 @@ const ChatNavbar = ({
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
-            className="dashboard-search-input"
+            className="dashboard-search-input w-full border-none outline-none bg-transparent text-sm"
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search users..."
             style={{
-              width: '100%', border: 'none', outline: 'none', background: 'transparent',
-              fontSize: '14px', color: theme.text, fontFamily: "'DM Sans', sans-serif",
+              color: theme.text,
+              fontFamily: "'DM Sans', sans-serif",
             }}
           />
         </div>
       )}
 
       {/* Actions */}
-      <div
-        className="dashboard-actions"
-        style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}
-      >
+      <div className="dashboard-actions flex items-center gap-2 flex-shrink-0">
         <button
-          className="dashboard-profile-button"
+          className="dashboard-profile-button w-10 h-10 rounded-full border-none font-bold cursor-pointer"
           onClick={onNavigateToProfile}
           title="Profile"
           style={{
-            width: '40px', height: '40px', borderRadius: '50%', border: 'none',
-            background: theme.accent, color: theme.accentText, cursor: 'pointer', fontWeight: 700,
+            background: theme.accent,
+            color: theme.accentText,
           }}
         >
           {initials}
         </button>
 
         <button
-          className="dashboard-settings-button"
+          className="dashboard-settings-button bg-transparent border-none cursor-pointer p-2 rounded-lg"
           onClick={onNavigateToSettings}
           title="Settings"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: '8px', borderRadius: '10px', color: theme.muted,
-          }}
+          style={{ color: theme.muted }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="3" />
@@ -126,13 +101,10 @@ const ChatNavbar = ({
         </button>
 
         <button
-          className="dashboard-logout-button"
+          className="dashboard-logout-button bg-transparent border-none cursor-pointer p-2 rounded-lg"
           onClick={onLogout}
           title="Logout"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: '8px', borderRadius: '10px', color: theme.muted,
-          }}
+          style={{ color: theme.muted }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

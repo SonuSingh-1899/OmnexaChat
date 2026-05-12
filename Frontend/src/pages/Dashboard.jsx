@@ -44,7 +44,7 @@ const Dashboard = ({
     selectUser,
     clearSelectedUser,
     sendMessage,
-  } = useChat({ currentUser: user });
+  } = useChat({ user });
 
   // Responsive listener
   useEffect(() => {
@@ -64,7 +64,7 @@ const Dashboard = ({
 
   return (
     <div
-      className="dashboard-page min-h-screen flex flex-col overflow-hidden"
+      className="dashboard-page h-screen flex flex-col overflow-hidden"
       style={{
         background: theme.pageBackground,
         fontFamily: "'DM Sans', sans-serif",
@@ -87,13 +87,13 @@ const Dashboard = ({
       {!isCompactMobile && mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 bg-black/35 z-[998]"
+          className="fixed inset-0 bg-black/35 z-998"
         />
       )}
 
       {/* Main Layout */}
       <div
-        className={`flex-1 flex min-h-0 p-[18px] gap-[18px] ${
+        className={`flex-1 flex overflow-hidden min-h-0 ${
           showMobileListPage ? 'dashboard-layout--mobile-list' : ''
         } ${isCompactMobile && selectedUser ? 'dashboard-layout--mobile-chat' : ''}`}
       >
@@ -112,13 +112,13 @@ const Dashboard = ({
 
         {showChatPanel && (
           <div
-            className={`flex-1 min-h-0 flex flex-col ${
+            className={`flex-1 min-h-0 overflow-hidden flex flex-col ${
               isCompactMobile ? 'dashboard-chat-window--mobile-page' : ''
             }`}
             style={{
               background: theme.surface,
               border: `1px solid ${theme.border}`,
-              borderRadius: '32px',
+              // borderRadius: '32px',
               boxShadow: `0 18px 42px ${theme.shadow}`,
               overflow: 'hidden',
             }}

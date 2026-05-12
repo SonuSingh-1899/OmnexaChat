@@ -4,6 +4,8 @@ import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
 export default function useChat({ user }) {
+  console.log("useChat hook running");
+console.log("User:", user);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);

@@ -29,32 +29,25 @@ const ChatSidebar = ({
 
   return (
     <div
-      className={`sidebar ${mobileMenuOpen ? 'open' : ''} ${isCompactMobile ? 'sidebar--mobile-page' : ''}`}
+      className={`sidebar w-80 flex flex-col min-h-0 ${mobileMenuOpen ? 'open' : ''} ${isCompactMobile ? 'sidebar--mobile-page' : ''}`}
       style={{
-        width: '320px',
         background: theme.surface,
         border: `1px solid ${theme.border}`,
-        borderRadius: '28px',
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 0,
+        // borderRadius: '28px',
         boxShadow: `0 18px 42px ${theme.shadow}`,
       }}
     >
       {/* Header */}
-      <div style={{ padding: '20px 20px 14px', borderBottom: `1px solid ${theme.border}` }}>
-        <p style={{
-          margin: 0, fontSize: '11px', textTransform: 'uppercase',
-          letterSpacing: '0.12em', color: theme.muted,
-        }}>
+      <div className="px-5 pt-5 pb-3.5" style={{ borderBottom: `1px solid ${theme.border}` }}>
+        <p className="m-0 text-[11px] uppercase tracking-wider" style={{ color: theme.muted }}>
           {searchQuery.trim() ? 'Results' : 'Direct'}
         </p>
       </div>
 
       {/* User List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
+      <div className="flex-1 overflow-y-auto px-3 py-2.5">
         {filteredUsers.length === 0 ? (
-          <p style={{ textAlign: 'center', color: theme.muted, padding: '40px 20px' }}>
+          <p className="text-center py-10 px-5" style={{ color: theme.muted }}>
             {searchQuery.trim() ? 'No user found' : 'No other users found'}
           </p>
         ) : (
@@ -62,11 +55,9 @@ const ChatSidebar = ({
             <div
               key={otherUser.id}
               onClick={() => onSelectUser(otherUser)}
+              className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer mb-2 transition-colors duration-200"
               style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '14px', borderRadius: '18px', cursor: 'pointer', marginBottom: '8px',
                 background: selectedUser?.id === otherUser.id ? theme.subtle : 'transparent',
-                transition: 'background 0.2s',
               }}
               onMouseEnter={(e) => {
                 if (selectedUser?.id !== otherUser.id)
@@ -77,31 +68,21 @@ const ChatSidebar = ({
                   e.currentTarget.style.background = 'transparent';
               }}
             >
-              <div style={{
-                width: '46px', height: '46px', borderRadius: '14px', flexShrink: 0,
-                background: theme.pageBackground, color: theme.text,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700,
-              }}>
+              <div className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold" style={{ background: theme.pageBackground, color: theme.text }}>
                 {initials(otherUser.name)}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px' }}>
-                  <p style={{
-                    margin: 0, fontWeight: 600, color: theme.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline gap-2">
+                  <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
                     {otherUser.name}
                   </p>
                   {otherUser.lastMessageTime && (
-                    <span style={{ fontSize: '10px', color: theme.muted, flexShrink: 0 }}>
+                    <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
                       {formatLastMessageTime(otherUser.lastMessageTime)}
                     </span>
                   )}
                 </div>
-                <p style={{
-                  margin: '4px 0 0', fontSize: '13px', color: theme.muted,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>
+                <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
                   {otherUser.lastMessage || 'Click to start chatting'}
                 </p>
               </div>
@@ -111,29 +92,25 @@ const ChatSidebar = ({
       </div>
 
       {/* Settings Button */}
-      <div style={{ padding: '12px', borderTop: `1px solid ${theme.border}` }}>
+      <div className="p-3" style={{ borderTop: `1px solid ${theme.border}` }}>
         <button
           type="button"
           onClick={onNavigateToSettings}
+          className="w-full flex items-center gap-3 p-3 rounded-xl border-none cursor-pointer text-left transition-all hover:opacity-80"
           style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-            padding: '12px 14px', borderRadius: '18px', border: 'none',
-            background: theme.subtle, color: theme.text, cursor: 'pointer', textAlign: 'left',
+            background: theme.subtle,
+            color: theme.text,
           }}
         >
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '12px',
-            background: theme.pageBackground,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: theme.pageBackground }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.text} strokeWidth="2">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33 1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </div>
-          <div>
-            <p style={{ margin: 0, fontWeight: 600 }}>Settings</p>
-            <p style={{ margin: '4px 0 0', fontSize: '12px', color: theme.muted }}>
+          <div className="flex-1 min-w-0">
+            <p className="m-0 font-semibold">Settings</p>
+            <p className="m-0 mt-1 text-xs" style={{ color: theme.muted }}>
               Theme and password options
             </p>
           </div>
