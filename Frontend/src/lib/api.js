@@ -67,6 +67,14 @@ export const profileApi = {
     const { data } = await api.get('/profile/users');
     return data;
   },
+  pingPresence: async () => {
+    const { data } = await api.post('/profile/presence/ping');
+    return data;
+  },
+  markOffline: async () => {
+    const { data } = await api.post('/profile/presence/offline');
+    return data;
+  },
   forgotPassword: async (email) => {
     const { data } = await api.post(`/profile/forgot-password?email=${encodeURIComponent(email)}`);
     return data;

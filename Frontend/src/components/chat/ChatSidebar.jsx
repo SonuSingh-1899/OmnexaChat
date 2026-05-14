@@ -38,11 +38,11 @@ const ChatSidebar = ({
       }}
     >
       {/* Header */}
-      <div className="px-5 pt-5 pb-3.5" style={{ borderBottom: `1px solid ${theme.border}` }}>
+      {/* <div className="px-5 pt-5 pb-3.5" style={{ borderBottom: `1px solid ${theme.border}` }}>
         <p className="m-0 text-[11px] uppercase tracking-wider" style={{ color: theme.muted }}>
           {searchQuery.trim() ? 'Results' : 'Direct'}
         </p>
-      </div>
+      </div> */}
 
       {/* User List */}
       <div className="flex-1 overflow-y-auto px-3 py-2.5">

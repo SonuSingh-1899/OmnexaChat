@@ -1,8 +1,8 @@
 // pages/Profile.jsx
 import { useState, useEffect } from 'react';
-import { profileApi, session } from '../lib/api';
+import { profileApi } from '../lib/api';
 
-const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
+const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
@@ -22,6 +22,28 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
       });
     }
   }, [user]);
+
+  const openEditMode = () => {
+    setFormData({
+      name: user?.name || '',
+      bio: user?.bio || '',
+      avatarUrl: user?.avatarUrl || '',
+    });
+    setErrors({});
+    setMessage({ text: '', type: '' });
+    setIsEditing(true);
+  };
+
+  const closeEditMode = () => {
+    setIsEditing(false);
+    setFormData({
+      name: user?.name || '',
+      bio: user?.bio || '',
+      avatarUrl: user?.avatarUrl || '',
+    });
+    setErrors({});
+    setMessage({ text: '', type: '' });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,14 +96,17 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
         ...payload,
         avatarUrl: formData.avatarUrl,
       });
-      
-      onUserUpdated?.(updated);
-      localStorage.setItem('user', JSON.stringify(updated));
+
+      const refreshedProfile = await profileApi.getMe().catch(() => updated);
+      const nextUser = { ...updated, ...refreshedProfile };
+
+      onUserUpdated?.(nextUser);
+      localStorage.setItem('user', JSON.stringify(nextUser));
       setFormData(prev => ({
         ...prev,
-        name: updated.name || payload.name,
-        bio: updated.bio || '',
-        avatarUrl: updated.avatarUrl || '',
+        name: nextUser.name || payload.name,
+        bio: nextUser.bio || '',
+        avatarUrl: nextUser.avatarUrl || '',
       }));
       setMessage({ text: 'Profile updated successfully!', type: 'success' });
       setIsEditing(false);
@@ -94,11 +119,6 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    session.clear();
-    window.location.reload();
   };
 
   return (
@@ -139,12 +159,12 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-              Name
-            </label>
-            {isEditing ? (
+        {isEditing ? (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+                Name
+              </label>
               <div>
                 <input
                   type="text"
@@ -159,87 +179,91 @@ const Profile = ({ user, onUserUpdated, onNavigateToDashboard }) => {
                   <p className="text-red-500 text-xs mt-1">{errors.name}</p>
                 )}
               </div>
-            ) : (
-              <p className="py-2 text-stone-800 border-b border-stone-200">
-                {user?.name || '-'}
-              </p>
-            )}
-          </div>
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
-              Bio
-            </label>
-            {isEditing ? (
+            <div>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+                Bio
+              </label>
               <div>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleChange}
-                  rows="3"
+                  rows="4"
+                  maxLength="200"
+                  autoFocus
                   placeholder="Tell something about yourself..."
                   className={`w-full px-3 py-2.5 rounded-lg border ${
                     errors.bio ? 'border-red-400' : 'border-stone-200'
                   } focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent bg-white text-stone-800 resize-none`}
                 />
-                {errors.bio && (
-                  <p className="text-red-500 text-xs mt-1">{errors.bio}</p>
-                )}
+                <div className="mt-1 flex items-center justify-between">
+                  {errors.bio ? (
+                    <p className="text-red-500 text-xs">{errors.bio}</p>
+                  ) : (
+                    <span className="text-xs text-stone-400">Max 200 characters</span>
+                  )}
+                  <span className="text-xs text-stone-400">{formData.bio.length}/200</span>
+                </div>
               </div>
-            ) : (
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-stone-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={closeEditMode}
+                className="flex-1 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg border border-stone-200 font-medium transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+                Name
+              </label>
+              <p className="py-2 text-stone-800 border-b border-stone-200">
+                {user?.name || '-'}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+                Bio
+              </label>
               <p className={`py-2 border-b border-stone-200 ${!user?.bio ? 'text-stone-400' : 'text-stone-800'}`}>
                 {user?.bio || 'No bio added yet'}
               </p>
-            )}
-          </div>
+            </div>
 
-          <div className="flex gap-3 pt-2">
-            {isEditing ? (
-              <>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 bg-stone-800 hover:bg-stone-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFormData({
-                      name: user?.name || '',
-                      bio: user?.bio || '',
-                      avatarUrl: user?.avatarUrl || '',
-                    });
-                    setErrors({});
-                    setMessage({ text: '', type: '' });
-                  }}
-                  className="flex-1 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg border border-stone-200 font-medium transition-all duration-200"
-                >
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="flex-1 bg-stone-800 hover:bg-stone-700 text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
-                >
-                  Edit Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex-1 bg-white hover:bg-red-50 text-red-600 px-4 py-2.5 rounded-lg border border-red-200 font-medium transition-all duration-200"
-                >
-                  Logout
-                </button>
-              </>
-            )}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={openEditMode}
+                className="flex-1 bg-stone-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
+              >
+                Edit Profile
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex-1 bg-white hover:bg-red-50 text-red-600 px-4 py-2.5 rounded-lg border border-red-200 font-medium transition-all duration-200"
+              >
+                Logout
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );

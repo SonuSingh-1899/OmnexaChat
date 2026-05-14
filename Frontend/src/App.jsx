@@ -10,7 +10,7 @@ import Settings from './pages/Settings';
 import ChangePassword from './components/ChangePassword';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
-import { FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
+import { API_BASE_URL, FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
 import {
   getCurrentPath,
   KNOWN_ROUTES,
@@ -25,42 +25,42 @@ const UI_THEME_KEY = 'uiTheme';
 const THEME_OPTIONS = {
   sand: {
     key: 'sand',
-    label: 'Warm Sand',
-    pageBackground: '#f5f3ef',
+    label: 'Logo White',
+    pageBackground: '#f6f6f7',
     surface: '#ffffff',
-    subtle: '#faf7f2',
-    border: '#e8e0d6',
+    subtle: '#f3f4f6',
+    border: '#e5e7eb',
     accent: '#111111',
     accentText: '#ffffff',
-    muted: '#8d8479',
+    muted: '#6b7280',
     text: '#111111',
-    shadow: 'rgba(24, 18, 12, 0.08)',
+    shadow: 'rgba(17, 17, 17, 0.08)',
   },
   ocean: {
     key: 'ocean',
-    label: 'Ocean Blue',
-    pageBackground: '#eef4ff',
+    label: 'Ink Silver',
+    pageBackground: '#f3f4f6',
     surface: '#ffffff',
-    subtle: '#f5f8ff',
-    border: '#d8e3fb',
-    accent: '#3157d5',
+    subtle: '#eef0f3',
+    border: '#d7dbe2',
+    accent: '#1f2937',
     accentText: '#ffffff',
-    muted: '#6f7da8',
-    text: '#17213f',
-    shadow: 'rgba(49, 87, 213, 0.12)',
+    muted: '#667085',
+    text: '#111827',
+    shadow: 'rgba(17, 24, 39, 0.10)',
   },
   forest: {
     key: 'forest',
-    label: 'Forest Green',
-    pageBackground: '#eef6f0',
+    label: 'Obsidian',
+    pageBackground: '#f5f5f5',
     surface: '#ffffff',
-    subtle: '#f5fbf6',
-    border: '#d7e7d9',
-    accent: '#2d7a4e',
+    subtle: '#f1f1f1',
+    border: '#dddddd',
+    accent: '#000000',
     accentText: '#ffffff',
-    muted: '#6d8673',
-    text: '#173222',
-    shadow: 'rgba(45, 122, 78, 0.12)',
+    muted: '#707070',
+    text: '#121212',
+    shadow: 'rgba(0, 0, 0, 0.12)',
   },
 };
 
@@ -216,12 +216,60 @@ const App = () => {
     };
   }, [currentUser, isLoading, navigateTo, pathname, pendingSignup]);
 
+  useEffect(() => {
+    if (!currentUser || !session.getToken()) {
+      return undefined;
+    }
+
+    const pingPresence = () => profileApi.pingPresence().catch((error) => {
+      console.error('Failed to ping presence', error);
+    });
+
+    void pingPresence();
+
+    const presenceTimer = window.setInterval(() => {
+      void pingPresence();
+    }, 20000);
+
+    const markOfflineOnPageExit = () => {
+      const token = session.getToken();
+      if (!token) {
+        return;
+      }
+
+      void fetch(`${API_BASE_URL}/profile/presence/offline`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        keepalive: true,
+      }).catch((error) => {
+        console.error('Failed to mark user offline', error);
+      });
+    };
+
+    window.addEventListener('pagehide', markOfflineOnPageExit);
+    window.addEventListener('beforeunload', markOfflineOnPageExit);
+
+    return () => {
+      window.clearInterval(presenceTimer);
+      window.removeEventListener('pagehide', markOfflineOnPageExit);
+      window.removeEventListener('beforeunload', markOfflineOnPageExit);
+    };
+  }, [currentUser]);
+
   const handleLoginSuccess = async (token) => {
     session.setToken(token);
     await hydrateSession();
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await profileApi.markOffline();
+    } catch (error) {
+      console.error('Failed to mark user offline before logout', error);
+    }
+
     session.clear();
     setCurrentUser(null);
     setPendingSignup(null);
@@ -341,6 +389,7 @@ const App = () => {
       <Profile
         user={currentUser}
         onUserUpdated={setCurrentUser}
+        onLogout={handleLogout}
         onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
       />
     );

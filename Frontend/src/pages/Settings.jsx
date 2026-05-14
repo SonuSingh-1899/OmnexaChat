@@ -30,10 +30,10 @@ const Settings = ({
         <h1 className="font-serif text-xl md:text-2xl font-normal m-0">
           Settings
         </h1>
-        <div className="w-[70px] md:w-[110px]" />
+        <div className="w-17.5 md:w-27.5" />
       </div>
 
-      <div className="settings-content max-w-[900px] mx-auto p-6 md:p-8 space-y-6">
+      <div className="settings-content max-w-225 mx-auto p-6 md:p-8 space-y-6">
         <section className="rounded-2xl p-6" style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
@@ -43,7 +43,7 @@ const Settings = ({
             Theme
           </h2>
           <p className="text-sm mb-5" style={{ color: theme.muted }}>
-            Choose one of the 3 UI colors for your chat app.
+            Choose one of the 3 logo-inspired black and neutral themes for your chat app.
           </p>
 
           <div className="settings-theme-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -55,7 +55,7 @@ const Settings = ({
                   key={themeKey}
                   type="button"
                   onClick={() => onThemeChange(themeKey)}
-                  className="p-[18px] rounded-2xl cursor-pointer text-left"
+                  className="p-4.5 rounded-2xl cursor-pointer text-left"
                   style={{
                     border: `2px solid ${isActive ? option.accent : option.border}`,
                     background: option.surface,
@@ -63,15 +63,15 @@ const Settings = ({
                   }}
                 >
                   <div className="flex gap-2.5 mb-3.5">
-                    <span className="w-[22px] h-[22px] rounded-full" style={{ background: option.accent }} />
-                    <span className="w-[22px] h-[22px] rounded-full border" style={{ background: option.subtle, borderColor: option.border }} />
-                    <span className="w-[22px] h-[22px] rounded-full border" style={{ background: option.pageBackground, borderColor: option.border }} />
+                    <span className="w-5.5 h-5.5 rounded-full" style={{ background: option.accent }} />
+                    {/* <span className="w-5.5 h-5.5 rounded-full border" style={{ background: option.subtle, borderColor: option.border }} />
+                    <span className="w-5.5 h-5.5 rounded-full border" style={{ background: option.pageBackground, borderColor: option.border }} /> */}
                   </div>
                   <p className="font-semibold text-[15px] m-0 mb-1.5" style={{ color: option.text }}>
                     {option.label}
                   </p>
                   <p className="text-[12px] m-0" style={{ color: option.muted }}>
-                    {isActive ? 'Currently active' : 'Tap to apply'}
+                    {isActive ? 'active' : 'Tap to apply'}
                   </p>
                 </button>
               );
@@ -88,7 +88,7 @@ const Settings = ({
             Security
           </h2>
           <p className="text-sm mb-4" style={{ color: theme.muted }}>
-            Password change option ab settings page ke andar hai.
+            you can change your password using your current password.
           </p>
 
           <button

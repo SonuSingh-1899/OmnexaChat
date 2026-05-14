@@ -40,7 +40,6 @@ const Dashboard = ({
     setNewMessage,
     loading,
     sending,
-    isConnected,
     selectUser,
     clearSelectedUser,
     sendMessage,
@@ -61,27 +60,32 @@ const Dashboard = ({
   const showMobileListPage = isCompactMobile && !selectedUser;
   const showSidebarPanel = !isCompactMobile || !selectedUser;
   const showChatPanel = !isCompactMobile || Boolean(selectedUser);
+  const showTopNavbar = !isCompactMobile || !selectedUser;
 
   return (
     <div
-      className="dashboard-page h-screen flex flex-col overflow-hidden"
+      className={`dashboard-page h-screen flex flex-col overflow-hidden ${
+        isCompactMobile && selectedUser ? 'dashboard-page--mobile-chat' : ''
+      }`}
       style={{
         background: theme.pageBackground,
         fontFamily: "'DM Sans', sans-serif",
         color: theme.text,
       }}
     >
-      <ChatNavbar
-        theme={theme}
-        user={user}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        showSearch={showMobileListPage || !isCompactMobile}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToSettings={onNavigateToSettings}
-        onLogout={onLogout}
-        onOpenSidebar={() => setMobileMenuOpen(true)}
-      />
+      {showTopNavbar && (
+        <ChatNavbar
+          theme={theme}
+          user={user}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          showSearch={showMobileListPage || !isCompactMobile}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToSettings={onNavigateToSettings}
+          onLogout={onLogout}
+          onOpenSidebar={() => setMobileMenuOpen(true)}
+        />
+      )}
 
       {/* Overlay for mobile sidebar */}
       {!isCompactMobile && mobileMenuOpen && (
@@ -130,7 +134,6 @@ const Dashboard = ({
               newMessage={newMessage}
               loading={loading}
               sending={sending}
-              isConnected={isConnected}
               currentUserEmail={user?.email}
               isCompactMobile={isCompactMobile}
               onNewMessageChange={setNewMessage}
@@ -172,6 +175,7 @@ const Dashboard = ({
 
         @media (max-width: 640px) {
           .dashboard-page { overflow: auto; }
+          .dashboard-page--mobile-chat { height: 100dvh !important; }
           .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
           .dashboard-brand { gap: 8px !important; }
           .dashboard-brand-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; font-size: 13px !important; }
@@ -186,6 +190,9 @@ const Dashboard = ({
           .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
             padding: 0 !important; gap: 0 !important; min-height: calc(100dvh - 94px);
           }
+          .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
+            min-height: 100dvh !important;
+          }
           .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
             position: relative !important; left: auto !important; top: auto !important;
             bottom: auto !important; transform: none !important; z-index: auto !important;
@@ -194,11 +201,44 @@ const Dashboard = ({
           }
           .mobile-menu-btn { display: none !important; }
           .dashboard-chat-window { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
-          .dashboard-chat-header { flex-wrap: wrap; align-items: center !important; padding: 14px 12px !important; }
-          .dashboard-chat-status { width: 100%; text-align: left; }
-          .dashboard-composer { flex-direction: column; align-items: stretch !important; padding: 12px !important; }
-          .dashboard-send-button { width: 100%; justify-content: center; padding: 14px 20px !important; }
-          .dashboard-chat-window input[type="text"] { width: 100%; }
+          .dashboard-chat-header {
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 12px !important;
+          }
+          .dashboard-chat-header > div:nth-child(2) {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 14px !important;
+          }
+          .dashboard-chat-status {
+            width: auto !important;
+            max-width: 110px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10px !important;
+            padding: 6px 8px !important;
+          }
+          .dashboard-composer {
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 10px !important;
+            padding: 10px 12px max(10px, env(safe-area-inset-bottom)) !important;
+          }
+          .dashboard-send-button {
+            width: 44px !important;
+            min-width: 44px !important;
+            height: 44px !important;
+            padding: 0 !important;
+            justify-content: center !important;
+          }
+          .dashboard-chat-window input[type="text"] {
+            width: auto !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
           .sidebar--mobile-page > div:first-child { padding: 14px 12px 10px !important; }
           .sidebar--mobile-page > div:nth-child(2) { padding: 8px 8px 10px !important; }
         }
