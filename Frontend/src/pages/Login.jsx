@@ -65,17 +65,21 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
   };
 
   return (
-    <AuthCard title="Login" showLogo>
+    <AuthCard
+      title="Login"
+      subtitle="Access your Omnexa dashboard, continue chats, and jump back into your workspace with the same visual flow as the app."
+      showLogo
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {notice && (
-          <p className="text-stone-500 text-sm mb-2">
+          <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
             {notice}
           </p>
         )}
 
         {errors.general && (
-          <p className="text-red-500 text-sm mb-2">
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
             {errors.general}
           </p>
         )}
@@ -84,6 +88,7 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
           label="Email"
           type="email"
           name="email"
+          placeholder="you@example.com"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
@@ -93,6 +98,7 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
           label="Password"
           type="password"
           name="password"
+          placeholder="Enter your password"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -105,7 +111,7 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
               e.preventDefault();
               onNavigateToForgotPassword?.();
             }}
-            className="inline-flex items-center gap-1.5 text-stone-500 no-underline text-xs font-medium"
+            className="inline-flex items-center gap-1.5 text-zinc-500 no-underline text-xs font-semibold transition hover:text-zinc-950"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -118,17 +124,17 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-black text-white py-4 rounded-xl cursor-pointer disabled:opacity-60"
+          className="w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-60"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        <div className="text-center mt-5 text-sm text-stone-400">
+        <div className="text-center mt-5 text-sm text-zinc-500">
           Don't have an account?{' '}
           <a
             href="#"
             onClick={e => { e.preventDefault(); onNavigateToSignup?.(); }}
-            className="text-black no-underline font-medium"
+            className="text-zinc-950 no-underline font-semibold"
           >
             Sign Up
           </a>

@@ -89,9 +89,7 @@ export const profileApi = {
 
 export const chatApi = {
   getConversation: async (otherEmail) => {
-    // Ensure email is properly encoded
     const encodedEmail = encodeURIComponent(otherEmail);
-    console.log('Fetching conversation for:', otherEmail, 'Encoded:', encodedEmail);
     const { data } = await api.get(`/api/chat/conversation/${encodedEmail}`);
     return data;
   },

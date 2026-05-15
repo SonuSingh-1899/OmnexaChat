@@ -18,13 +18,17 @@ const InputField = ({
   return (
     <div className="mb-5">
       <label className={`block text-[11px] font-medium uppercase tracking-[0.8px] mb-1.5 font-sans ${
-        error ? 'text-red-500' : 'text-stone-400'
+        error ? 'text-red-500' : 'text-zinc-500'
       }`}>
         {label}
       </label>
 
-      <div className={`flex items-center pb-2 transition-colors duration-200 ${
-        error ? 'border-b-[1.5px] border-red-500' : focused ? 'border-b-[1.5px] border-black' : 'border-b-[1.5px] border-[#e0ddd8]'
+      <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
+        error
+          ? 'border-red-400 bg-red-50/60'
+          : focused
+            ? 'border-zinc-950 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
+            : 'border-zinc-200 bg-zinc-50/70'
       }`}>
         <input
           type={inputType}
@@ -34,13 +38,13 @@ const InputField = ({
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="border-none bg-transparent font-sans text-sm text-[#1a1a1a] outline-none w-full font-normal"
+          className="w-full border-none bg-transparent font-sans text-sm font-medium text-zinc-900 outline-none placeholder:text-zinc-400"
         />
         {isPassword && (
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="bg-none border-none cursor-pointer p-0 text-stone-400 flex-shrink-0 flex items-center"
+            className="flex shrink-0 items-center p-0 text-zinc-400 transition hover:text-zinc-700"
           >
             {showPassword ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

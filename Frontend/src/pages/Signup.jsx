@@ -84,12 +84,18 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
   };
 
   return (
-    <AuthCard title="Sign Up" showBack onBack={onNavigateToLogin}>
+    <AuthCard
+      title="Sign Up"
+      subtitle="Create your profile and verify your account with OTP."
+      showBack
+      onBack={onNavigateToLogin}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
 
         <InputField
           label="Name"
           name="name"
+          placeholder="Your full name"
           value={formData.name}
           onChange={handleChange}
           error={errors.name}
@@ -99,6 +105,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
           label="Email"
           type="email"
           name="email"
+          placeholder="you@example.com"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
@@ -108,6 +115,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
           label="Password"
           type="password"
           name="password"
+          placeholder="Minimum 6 characters"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -117,6 +125,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
           label="Confirm password"
           type="password"
           name="confirmPassword"
+          placeholder="Re-enter your password"
           value={formData.confirmPassword}
           onChange={handleChange}
           error={errors.confirmPassword}
@@ -125,7 +134,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-black text-white rounded-xl py-4 cursor-pointer mt-1 disabled:opacity-60"
+          className="mt-1 w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-60"
         >
           {loading ? "Creating account..." : "Sign Up"}
         </button>
@@ -137,7 +146,7 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
               e.preventDefault();
               onNavigateToForgotPassword?.();
             }}
-            className="inline-flex items-center gap-1.5 text-stone-500 no-underline text-xs font-medium"
+            className="inline-flex items-center gap-1.5 text-zinc-500 no-underline text-xs font-semibold transition hover:text-zinc-950"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="9" />
@@ -148,12 +157,12 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
           </a>
         </div>
 
-        <div className="text-center mt-5 text-sm text-stone-400">
+        <div className="text-center mt-5 text-sm text-zinc-500">
           Already have an account?{' '}
           <a
             href="#"
             onClick={e => { e.preventDefault(); onNavigateToLogin?.(); }}
-            className="text-black no-underline font-medium"
+            className="text-zinc-950 no-underline font-semibold"
           >
             Sign In
           </a>

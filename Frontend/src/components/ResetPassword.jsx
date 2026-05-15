@@ -1,5 +1,7 @@
 // pages/ResetPassword.jsx
 import { useState } from 'react';
+import AuthCard from './AuthCard';
+import InputField from './InputField';
 import { profileApi } from '../lib/api';
 
 const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin }) => {
@@ -75,112 +77,87 @@ const ResetPassword = ({ email, onNavigateToForgotPassword, onNavigateToLogin })
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f3ef] font-sans flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-2xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-        <h1 className="font-serif text-2xl font-normal text-black mb-2">
-          {isSuccess ? 'Password Reset!' : 'Reset Password'}
-        </h1>
-        <p className="text-[13px] text-stone-400 mb-8">
-          {isSuccess
-            ? 'Your password has been changed successfully.'
-            : `Enter the OTP sent to ${email || 'your email'} and set a new password.`}
-        </p>
+    <AuthCard
+      title="Reset Password"
+      subtitle={
+        isSuccess
+          ? 'Your password has been updated successfully. You can now continue to the Omnexa login page.'
+          : `Enter the OTP sent to ${email || 'your email'} and set a fresh password.`
+      }
+      showBack={!isSuccess}
+      onBack={email ? onNavigateToForgotPassword : onNavigateToLogin}
+    >
+      {message.text && (
+        <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${
+          message.type === 'success'
+            ? 'border-green-200 bg-green-50 text-green-700'
+            : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {message.text}
+        </div>
+      )}
 
-        {message.text && (
-          <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
-            message.type === 'success' 
-              ? 'bg-green-50 text-green-700 border border-green-200' 
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {message.text}
-          </div>
-        )}
+      {!isSuccess && email && (
+        <form onSubmit={handleSubmit}>
+          <InputField
+            label="OTP"
+            name="otp"
+            value={otp}
+            onChange={(event) => {
+              setOtp(event.target.value);
+              setMessage({ text: '', type: '' });
+            }}
+            placeholder="Enter 6-digit OTP"
+          />
 
-        {!isSuccess && email && (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-5">
-              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
-                OTP
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => {
-                  setOtp(e.target.value);
-                  setMessage({ text: '', type: '' });
-                }}
-                placeholder="Enter 6-digit OTP"
-                className="w-full p-3 border border-stone-200 rounded-lg text-sm font-sans outline-none"
-              />
-            </div>
+          <InputField
+            label="New Password"
+            type="password"
+            name="newPassword"
+            value={formData.newPassword}
+            onChange={handleChange}
+            placeholder="Minimum 6 characters"
+            error={errors.newPassword}
+          />
 
-            <div className="mb-5">
-              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
-                New Password
-              </label>
-              <input
-                type="password"
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleChange}
-                placeholder="Minimum 6 characters"
-                className={`w-full p-3 rounded-lg text-sm font-sans outline-none ${
-                  errors.newPassword ? 'border-red-600' : 'border-stone-200'
-                } border`}
-              />
-              {errors.newPassword && (
-                <p className="text-red-600 text-[11px] mt-1">{errors.newPassword}</p>
-              )}
-            </div>
+          <InputField
+            label="Confirm Password"
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Re-enter your password"
+            error={errors.confirmPassword}
+          />
 
-            <div className="mb-7">
-              <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Re-enter your password"
-                className={`w-full p-3 rounded-lg text-sm font-sans outline-none ${
-                  errors.confirmPassword ? 'border-red-600' : 'border-stone-200'
-                } border`}
-              />
-              {errors.confirmPassword && (
-                <p className="text-red-600 text-[11px] mt-1">{errors.confirmPassword}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
-          </form>
-        )}
-
-        {isSuccess && (
           <button
-            onClick={onNavigateToLogin}
-            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer"
+            type="submit"
+            disabled={loading}
+            className="mt-2 w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Go to Login
+            {loading ? 'Resetting...' : 'Reset Password'}
           </button>
-        )}
+        </form>
+      )}
 
-        {!email && !isSuccess && (
-          <button
-            onClick={onNavigateToForgotPassword}
-            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer"
-          >
-            Back to Forgot Password
-          </button>
-        )}
-      </div>
-    </div>
+      {isSuccess && (
+        <button
+          onClick={onNavigateToLogin}
+          className="w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800"
+        >
+          Go to Login
+        </button>
+      )}
+
+      {!email && !isSuccess && (
+        <button
+          onClick={onNavigateToForgotPassword}
+          className="w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800"
+        >
+          Back to Forgot Password
+        </button>
+      )}
+    </AuthCard>
   );
 };
 

@@ -51,16 +51,22 @@ const VerifyOtp = ({ signupData, onNavigateToLogin, onRegistrationSuccess }) => 
   };
 
   return (
-    <AuthCard title="Verify OTP" showBack onBack={onNavigateToLogin}>
+    <AuthCard
+      title="Verify OTP"
+      subtitle="Enter the code sent to your email to finish setting up your Omnexa account."
+      showBack
+      onBack={onNavigateToLogin}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        <p className="text-sm text-stone-500 mb-2">
+        <p className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
           OTP sent to {email || 'your email'}
         </p>
 
         <InputField
           label="Enter OTP"
           name="otp"
+          placeholder="6-digit code"
           value={otp}
           onChange={(e) => {
             setOtp(e.target.value);
@@ -72,7 +78,7 @@ const VerifyOtp = ({ signupData, onNavigateToLogin, onRegistrationSuccess }) => 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-black text-white rounded-xl py-4 cursor-pointer disabled:opacity-60"
+          className="w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-60"
         >
           {loading ? "Verifying..." : "Verify OTP"}
         </button>

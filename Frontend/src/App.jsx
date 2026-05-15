@@ -1,16 +1,16 @@
-// App.jsx
 import { useCallback, useEffect, useState } from 'react';
 import './App.css';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import VerifyOtp from './pages/VerifyOtp';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
 import ChangePassword from './components/ChangePassword';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
-import { API_BASE_URL, FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
+import usePresence from './hooks/usePresence';
+import { FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import Signup from './pages/Signup';
+import VerifyOtp from './pages/VerifyOtp';
 import {
   getCurrentPath,
   KNOWN_ROUTES,
@@ -19,89 +19,108 @@ import {
   PUBLIC_ROUTES,
   ROUTES,
 } from './routes/appRoutes';
+import { DEFAULT_THEME_KEY, getTheme, THEME_OPTIONS, UI_THEME_KEY } from './theme/themeOptions';
 
-const UI_THEME_KEY = 'uiTheme';
+const readStoredJson = (storage, key) => {
+  try {
+    const savedValue = storage.getItem(key);
+    return savedValue ? JSON.parse(savedValue) : null;
+  } catch (error) {
+    console.error(error);
+    storage.removeItem(key);
+    return null;
+  }
+};
 
-const THEME_OPTIONS = {
-  sand: {
-    key: 'sand',
-    label: 'Logo White',
-    pageBackground: '#f6f6f7',
-    surface: '#ffffff',
-    subtle: '#f3f4f6',
-    border: '#e5e7eb',
-    accent: '#111111',
-    accentText: '#ffffff',
-    muted: '#6b7280',
-    text: '#111111',
-    shadow: 'rgba(17, 17, 17, 0.08)',
-  },
-  ocean: {
-    key: 'ocean',
-    label: 'Ink Silver',
-    pageBackground: '#f3f4f6',
-    surface: '#ffffff',
-    subtle: '#eef0f3',
-    border: '#d7dbe2',
-    accent: '#1f2937',
-    accentText: '#ffffff',
-    muted: '#667085',
-    text: '#111827',
-    shadow: 'rgba(17, 24, 39, 0.10)',
-  },
-  forest: {
-    key: 'forest',
-    label: 'Obsidian',
-    pageBackground: '#f5f5f5',
-    surface: '#ffffff',
-    subtle: '#f1f1f1',
-    border: '#dddddd',
-    accent: '#000000',
-    accentText: '#ffffff',
-    muted: '#707070',
-    text: '#121212',
-    shadow: 'rgba(0, 0, 0, 0.12)',
-  },
+const readStoredText = (storage, key) => {
+  try {
+    return storage.getItem(key) || '';
+  } catch (error) {
+    console.error(error);
+    return '';
+  }
+};
+
+const saveOrRemoveText = (storage, key, value) => {
+  if (value) {
+    storage.setItem(key, value);
+    return;
+  }
+
+  storage.removeItem(key);
+};
+
+const saveOrRemoveJson = (storage, key, value) => {
+  if (value) {
+    storage.setItem(key, JSON.stringify(value));
+    return;
+  }
+
+  storage.removeItem(key);
+};
+
+const getRedirectForGuest = (pathname, hasPendingSignup) => {
+  const routeExists = pathname === '/' || KNOWN_ROUTES.has(pathname);
+
+  if (pathname === ROUTES.otp && !hasPendingSignup) {
+    return {
+      nextPath: ROUTES.signup,
+      notice: 'signup first to verify otp',
+    };
+  }
+
+  if (!PUBLIC_ROUTES.has(pathname) || pathname === '/' || !routeExists) {
+    return {
+      nextPath: ROUTES.login,
+      notice: pathname === ROUTES.dashboard ? 'login first' : '',
+    };
+  }
+
+  return null;
+};
+
+const getRedirectForLoggedInUser = (pathname) => {
+  const routeExists = pathname === '/' || KNOWN_ROUTES.has(pathname);
+
+  if (PUBLIC_ROUTES.has(pathname) || pathname === ROUTES.dashboard || !routeExists) {
+    return ROUTES.dashboard;
+  }
+
+  return null;
 };
 
 const App = () => {
-  console.log(import.meta.env.VITE_API_BASE_URL);
   const [pathname, setPathname] = useState(getCurrentPath);
   const [isLoading, setIsLoading] = useState(() => Boolean(session.getToken()));
-  const [pendingSignup, setPendingSignup] = useState(() => {
-    try {
-      const storedSignup = sessionStorage.getItem(PENDING_SIGNUP_KEY);
-      return storedSignup ? JSON.parse(storedSignup) : null;
-    } catch (error) {
-      console.error(error);
-      sessionStorage.removeItem(PENDING_SIGNUP_KEY);
-      return null;
-    }
-  });
   const [currentUser, setCurrentUser] = useState(null);
   const [authNotice, setAuthNotice] = useState('');
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(() => {
-    try {
-      return sessionStorage.getItem(FORGOT_PASSWORD_EMAIL_KEY) || '';
-    } catch (error) {
-      console.error(error);
-      return '';
-    }
-  });
-  const [themeKey, setThemeKey] = useState(() => localStorage.getItem(UI_THEME_KEY) || 'sand');
-  const currentTheme = THEME_OPTIONS[themeKey] || THEME_OPTIONS.sand;
+  const [pendingSignup, setPendingSignup] = useState(() =>
+    readStoredJson(sessionStorage, PENDING_SIGNUP_KEY)
+  );
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState(() =>
+    readStoredText(sessionStorage, FORGOT_PASSWORD_EMAIL_KEY)
+  );
+  const [themeKey, setThemeKey] = useState(() =>
+    localStorage.getItem(UI_THEME_KEY) || DEFAULT_THEME_KEY
+  );
+
+  const currentTheme = getTheme(themeKey);
 
   const navigateTo = useCallback((path, { replace = false } = {}) => {
     navigateToPath(path, { replace });
     setPathname(path);
   }, []);
 
-  const hydrateSession = useCallback(async () => {
+  const loadCurrentUser = useCallback(async () => {
+    const userProfile = await profileApi.getMe();
+    localStorage.setItem('user', JSON.stringify(userProfile));
+    setCurrentUser(userProfile);
+    return userProfile;
+  }, []);
+
+  const restoreSession = useCallback(async () => {
     try {
-      const user = await profileApi.getMe();
-      console.log("GET ME RESPONSE:", user);
-      localStorage.setItem('user', JSON.stringify(user));
-      setCurrentUser(user);
+      await loadCurrentUser();
       setAuthNotice('');
       navigateTo(ROUTES.dashboard, { replace: true });
     } catch (error) {
@@ -113,7 +132,9 @@ const App = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [navigateTo]);
+  }, [loadCurrentUser, navigateTo]);
+
+  usePresence(currentUser);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -128,21 +149,11 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (pendingSignup) {
-      sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(pendingSignup));
-      return;
-    }
-
-    sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    saveOrRemoveJson(sessionStorage, PENDING_SIGNUP_KEY, pendingSignup);
   }, [pendingSignup]);
 
   useEffect(() => {
-    if (forgotPasswordEmail) {
-      sessionStorage.setItem(FORGOT_PASSWORD_EMAIL_KEY, forgotPasswordEmail);
-      return;
-    }
-
-    sessionStorage.removeItem(FORGOT_PASSWORD_EMAIL_KEY);
+    saveOrRemoveText(sessionStorage, FORGOT_PASSWORD_EMAIL_KEY, forgotPasswordEmail);
   }, [forgotPasswordEmail]);
 
   useEffect(() => {
@@ -159,7 +170,7 @@ const App = () => {
 
     const syncSession = async () => {
       if (!isCancelled) {
-        await hydrateSession();
+        await restoreSession();
       }
     };
 
@@ -168,42 +179,27 @@ const App = () => {
     return () => {
       isCancelled = true;
     };
-  }, [hydrateSession]);
+  }, [restoreSession]);
 
   useEffect(() => {
     if (isLoading) {
       return undefined;
     }
 
-    let nextPath = null;
-    let nextNotice = '';
-    const isKnownPath = pathname === '/' || KNOWN_ROUTES.has(pathname);
+    const redirectPath = currentUser
+      ? getRedirectForLoggedInUser(pathname)
+      : getRedirectForGuest(pathname, Boolean(pendingSignup));
 
-    if (currentUser) {
-      if (PUBLIC_ROUTES.has(pathname) || pathname === ROUTES.dashboard) {
-        nextPath = ROUTES.dashboard;
-      } else if (!isKnownPath) {
-        nextPath = ROUTES.dashboard;
-      }
-    } else if (pathname === '/' || pathname === ROUTES.dashboard || !isKnownPath) {
-      if (pathname === ROUTES.dashboard) {
-        nextNotice = 'login first';
-      }
-      nextPath = ROUTES.login;
-    } else if (!PUBLIC_ROUTES.has(pathname)) {
-      nextPath = ROUTES.login;
-    } else if (pathname === ROUTES.otp && !pendingSignup) {
-      nextNotice = 'signup first to verify otp';
-      nextPath = ROUTES.signup;
-    }
-
-    if (!nextPath && !nextNotice) {
+    if (!redirectPath) {
       return undefined;
     }
 
+    const nextPath = typeof redirectPath === 'string' ? redirectPath : redirectPath.nextPath;
+    const notice = typeof redirectPath === 'string' ? '' : redirectPath.notice;
+
     const redirectTimer = window.setTimeout(() => {
-      if (nextNotice) {
-        setAuthNotice(nextNotice);
+      if (notice) {
+        setAuthNotice(notice);
       }
 
       if (nextPath) {
@@ -216,51 +212,9 @@ const App = () => {
     };
   }, [currentUser, isLoading, navigateTo, pathname, pendingSignup]);
 
-  useEffect(() => {
-    if (!currentUser || !session.getToken()) {
-      return undefined;
-    }
-
-    const pingPresence = () => profileApi.pingPresence().catch((error) => {
-      console.error('Failed to ping presence', error);
-    });
-
-    void pingPresence();
-
-    const presenceTimer = window.setInterval(() => {
-      void pingPresence();
-    }, 20000);
-
-    const markOfflineOnPageExit = () => {
-      const token = session.getToken();
-      if (!token) {
-        return;
-      }
-
-      void fetch(`${API_BASE_URL}/profile/presence/offline`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        keepalive: true,
-      }).catch((error) => {
-        console.error('Failed to mark user offline', error);
-      });
-    };
-
-    window.addEventListener('pagehide', markOfflineOnPageExit);
-    window.addEventListener('beforeunload', markOfflineOnPageExit);
-
-    return () => {
-      window.clearInterval(presenceTimer);
-      window.removeEventListener('pagehide', markOfflineOnPageExit);
-      window.removeEventListener('beforeunload', markOfflineOnPageExit);
-    };
-  }, [currentUser]);
-
   const handleLoginSuccess = async (token) => {
     session.setToken(token);
-    await hydrateSession();
+    await restoreSession();
   };
 
   const handleLogout = async () => {
@@ -282,7 +236,6 @@ const App = () => {
     setPendingSignup(null);
     setAuthNotice('Account created! Please login to your account');
     navigateTo(ROUTES.login, { replace: true });
-
   };
 
   if (isLoading) {
@@ -300,6 +253,8 @@ const App = () => {
   if (pathname === ROUTES.login) {
     return (
       <Login
+        notice={authNotice}
+        onLoginSuccess={handleLoginSuccess}
         onNavigateToSignup={() => {
           setAuthNotice('');
           navigateTo(ROUTES.signup);
@@ -308,8 +263,6 @@ const App = () => {
           setAuthNotice('');
           navigateTo(ROUTES.forgotPassword);
         }}
-        onLoginSuccess={handleLoginSuccess}
-        notice={authNotice}
       />
     );
   }
@@ -376,8 +329,6 @@ const App = () => {
       <Dashboard
         theme={currentTheme}
         user={currentUser}
-        onUserUpdated={setCurrentUser}
-        onLogout={handleLogout}
         onNavigateToProfile={() => navigateTo(ROUTES.profile)}
         onNavigateToSettings={() => navigateTo(ROUTES.settings)}
       />

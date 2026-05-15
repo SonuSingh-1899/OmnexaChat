@@ -1,182 +1,210 @@
-// hooks/useChat.js (Updated)
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
+
+const USER_REFRESH_INTERVAL = 20000;
+
+const sortMessagesByTime = (messageList) =>
+  [...messageList].sort((firstMessage, secondMessage) =>
+    new Date(firstMessage.timestamp) - new Date(secondMessage.timestamp)
+  );
+
+const addMessageIfMissing = (messageList, incomingMessage) => {
+  const messageAlreadyExists = messageList.some((message) => message.id === incomingMessage.id);
+
+  if (messageAlreadyExists) {
+    return messageList;
+  }
+
+  return sortMessagesByTime([...messageList, incomingMessage]);
+};
+
+const updateUserPreview = (userList, email, content, timestamp) =>
+  userList.map((chatUser) =>
+    chatUser.email === email
+      ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
+      : chatUser
+  );
 
 export default function useChat({ user }) {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const selectedRef = useRef(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
-  const fetchUsers = useCallback(async () => {
-    if (!user?.email) return;
-    
+  const refreshUsers = useCallback(async () => {
+    if (!user?.email) {
+      return;
+    }
+
     try {
-      const userList = await profileApi.listUsers();
-      const filteredUsers = userList.filter(u => u.email !== user?.email);
-      setUsers(filteredUsers);
-      setSelectedUser((prev) => {
-        if (!prev) {
-          return prev;
+      const allUsers = await profileApi.listUsers();
+      const otherUsers = allUsers.filter((chatUser) => chatUser.email !== user.email);
+
+      setUsers(otherUsers);
+      setSelectedUser((currentSelectedUser) => {
+        if (!currentSelectedUser) {
+          return null;
         }
 
-        const latestSelectedUser = filteredUsers.find((candidate) => candidate.email === prev.email);
-        if (latestSelectedUser) {
-          selectedRef.current = { ...prev, ...latestSelectedUser };
-          return selectedRef.current;
-        }
+        const latestSelectedUser = otherUsers.find(
+          (chatUser) => chatUser.email === currentSelectedUser.email
+        );
 
-        return prev;
+        return latestSelectedUser || currentSelectedUser;
       });
-    } catch (err) {
-      console.error('Failed to fetch users:', err);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
     }
   }, [user?.email]);
-
-  useEffect(() => {
-    if (user?.email) {
-      fetchUsers();
-    }
-  }, [fetchUsers, user?.email]);
 
   useEffect(() => {
     if (!user?.email) {
       return undefined;
     }
 
+    void refreshUsers();
+
     const refreshTimer = window.setInterval(() => {
-      void fetchUsers();
-    }, 20000);
+      void refreshUsers();
+    }, USER_REFRESH_INTERVAL);
 
     return () => {
       window.clearInterval(refreshTimer);
     };
-  }, [fetchUsers, user?.email]);
+  }, [refreshUsers, user?.email]);
 
-  const selectUser = useCallback(async (u) => {
-    if (!u || !u.email) {
-      console.error('Invalid user selected:', u);
+  const selectUser = useCallback(async (chatUser) => {
+    if (!chatUser?.email) {
       return;
     }
-    
-    setSelectedUser(u);
-    selectedRef.current = u;
-    setLoading(true);
-    
+
+    setSelectedUser(chatUser);
+    setLoadingMessages(true);
+
     try {
-      const conv = await chatApi.getConversation(u.email);
-      setMessages(conv.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
-    } catch (err) {
-      console.error('Error loading conversation:', err);
+      const conversation = await chatApi.getConversation(chatUser.email);
+      setMessages(sortMessagesByTime(conversation));
+    } catch (error) {
+      console.error('Error loading conversation:', error);
       setMessages([]);
     } finally {
-      setLoading(false);
+      setLoadingMessages(false);
     }
   }, []);
 
   const clearSelectedUser = useCallback(() => {
     setSelectedUser(null);
-    selectedRef.current = null;
     setMessages([]);
   }, []);
 
-  const handleIncomingMessage = useCallback((msg) => {
-    setMessages(prev => {
-      if (prev.some(m => m.id === msg.id)) return prev;
-      return [...prev, msg].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    });
+  const handleIncomingMessage = useCallback((incomingMessage) => {
+    setMessages((currentMessages) => addMessageIfMissing(currentMessages, incomingMessage));
   }, []);
 
-  const handleUserLastMessageUpdate = useCallback((msg) => {
-    setUsers(prev => prev.map(u =>
-      u.email === msg.senderEmail
-        ? { ...u, lastMessage: msg.content, lastMessageTime: msg.timestamp }
-        : u
-    ));
-    setSelectedUser((prev) => {
-      if (prev?.email !== msg.senderEmail) {
-        return prev;
+  const handleUserPreviewUpdate = useCallback((incomingMessage) => {
+    setUsers((currentUsers) =>
+      updateUserPreview(
+        currentUsers,
+        incomingMessage.senderEmail,
+        incomingMessage.content,
+        incomingMessage.timestamp
+      )
+    );
+
+    setSelectedUser((currentSelectedUser) => {
+      if (currentSelectedUser?.email !== incomingMessage.senderEmail) {
+        return currentSelectedUser;
       }
 
-      selectedRef.current = { ...prev, lastMessage: msg.content, lastMessageTime: msg.timestamp };
-      return selectedRef.current;
+      return {
+        ...currentSelectedUser,
+        lastMessage: incomingMessage.content,
+        lastMessageTime: incomingMessage.timestamp,
+      };
     });
   }, []);
 
   useWebSocket({
     currentUserEmail: user?.email,
-    selectedUserRef: selectedRef,
+    selectedUserEmail: selectedUser?.email || '',
     onMessageReceived: handleIncomingMessage,
-    onUserLastMessageUpdate: handleUserLastMessageUpdate,
+    onUserLastMessageUpdate: handleUserPreviewUpdate,
   });
 
-  const sendMessage = useCallback(async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedUser || sending) return;
-    
+  const sendMessage = useCallback(async (event) => {
+    event.preventDefault();
+
+    if (!newMessage.trim() || !selectedUser || sendingMessage) {
+      return;
+    }
+
     const content = newMessage.trim();
-    setNewMessage('');
-    setSending(true);
-    
-    // Optimistic update
-    const tempId = Date.now();
-    const tempMessage = {
-      id: tempId,
+    const tempMessageId = Date.now();
+    const sentAt = new Date().toISOString();
+
+    const temporaryMessage = {
+      id: tempMessageId,
       senderEmail: user.email,
       receiverEmail: selectedUser.email,
       content,
-      timestamp: new Date().toISOString(),
+      timestamp: sentAt,
       isTemp: true,
     };
-    
-    setMessages(prev => [...prev, tempMessage]);
-    
+
+    setNewMessage('');
+    setSendingMessage(true);
+    setMessages((currentMessages) => [...currentMessages, temporaryMessage]);
+    setUsers((currentUsers) => updateUserPreview(currentUsers, selectedUser.email, content, sentAt));
+    setSelectedUser((currentSelectedUser) =>
+      currentSelectedUser
+        ? {
+            ...currentSelectedUser,
+            lastMessage: content,
+            lastMessageTime: sentAt,
+          }
+        : currentSelectedUser
+    );
+
     try {
-      const saved = await chatApi.sendMessage({ 
-        receiverEmail: selectedUser.email, 
-        content 
+      const savedMessage = await chatApi.sendMessage({
+        receiverEmail: selectedUser.email,
+        content,
       });
-      setMessages(prev => 
-        prev.filter(m => m.id !== tempId)
-          .concat(saved)
-          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-      );
-      
-      setUsers(prev => prev.map(u => 
-        u.email === selectedUser.email 
-          ? { ...u, lastMessage: content, lastMessageTime: new Date().toISOString() } 
-          : u
-      ));
-      setSelectedUser((prev) =>
-        prev?.email === selectedUser.email
-          ? { ...prev, lastMessage: content, lastMessageTime: new Date().toISOString() }
-          : prev
-      );
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      setMessages(prev => 
-        prev.map(m => m.id === tempId ? { ...m, error: true, isTemp: false } : m)
+
+      setMessages((currentMessages) => {
+        const messagesWithoutTemp = currentMessages.filter(
+          (message) => message.id !== tempMessageId
+        );
+
+        return sortMessagesByTime([...messagesWithoutTemp, savedMessage]);
+      });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === tempMessageId
+            ? { ...message, error: true, isTemp: false }
+            : message
+        )
       );
     } finally {
-      setSending(false);
+      setSendingMessage(false);
     }
-  }, [newMessage, selectedUser, sending, user?.email]);
+  }, [newMessage, selectedUser, sendingMessage, user?.email]);
 
-  return { 
-    users, 
-    selectedUser, 
-    messages, 
-    newMessage, 
-    setNewMessage, 
-    loading, 
-    sending, 
-    fetchUsers,
-    selectUser, 
-    clearSelectedUser, 
-    sendMessage 
+  return {
+    users,
+    selectedUser,
+    messages,
+    newMessage,
+    setNewMessage,
+    loading: loadingMessages,
+    sending: sendingMessage,
+    selectUser,
+    clearSelectedUser,
+    sendMessage,
   };
 }

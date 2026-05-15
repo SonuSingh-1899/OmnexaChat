@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { session, SOCKET_ENDPOINT_URL } from '../lib/api';
@@ -7,15 +7,18 @@ const buildInboxDestination = (email) => `/topic/messages/${email}`;
 
 const useWebSocket = ({
   currentUserEmail,
-  selectedUserRef,
+  selectedUserEmail,
   onMessageReceived,
   onUserLastMessageUpdate,
 }) => {
   const stompClientRef = useRef(null);
-  const [isConnected, setIsConnected] = useState(false);
-
+  const selectedUserEmailRef = useRef(selectedUserEmail);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onUserLastMessageUpdateRef = useRef(onUserLastMessageUpdate);
+
+  useEffect(() => {
+    selectedUserEmailRef.current = selectedUserEmail;
+  }, [selectedUserEmail]);
 
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
@@ -27,6 +30,11 @@ const useWebSocket = ({
 
   const connect = useCallback(() => {
     const token = session.getToken();
+
+    if (!currentUserEmail) {
+      return;
+    }
+
     const client = new Client({
       webSocketFactory: () => new SockJS(SOCKET_ENDPOINT_URL),
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
@@ -34,19 +42,13 @@ const useWebSocket = ({
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
-        setIsConnected(true);
-        console.log('WebSocket connected');
-
         client.subscribe(buildInboxDestination(currentUserEmail), (frame) => {
           try {
-            const msg = JSON.parse(frame.body);
-            onUserLastMessageUpdateRef.current(msg);
+            const message = JSON.parse(frame.body);
+            onUserLastMessageUpdateRef.current(message);
 
-            if (
-              selectedUserRef.current &&
-              msg.senderEmail === selectedUserRef.current.email
-            ) {
-              onMessageReceivedRef.current(msg);
+            if (message.senderEmail === selectedUserEmailRef.current) {
+              onMessageReceivedRef.current(message);
             }
           } catch (err) {
             console.error('Failed to parse WS message:', err);
@@ -55,21 +57,17 @@ const useWebSocket = ({
       },
       onStompError: (frame) => {
         console.error('STOMP error:', frame);
-        setIsConnected(false);
       },
       onWebSocketError: (err) => {
         console.error('WS error:', err);
-        setIsConnected(false);
       },
       onDisconnect: () => {
-        console.log('WebSocket disconnected');
-        setIsConnected(false);
       },
     });
 
     client.activate();
     stompClientRef.current = client;
-  }, [currentUserEmail, selectedUserRef]);
+  }, [currentUserEmail]);
 
   useEffect(() => {
     if (!currentUserEmail) {
@@ -81,11 +79,8 @@ const useWebSocket = ({
     return () => {
       stompClientRef.current?.deactivate();
       stompClientRef.current = null;
-      setIsConnected(false);
     };
   }, [connect, currentUserEmail]);
-
-  return { isConnected };
 };
 
 export default useWebSocket;

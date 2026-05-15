@@ -1,36 +1,146 @@
-// pages/Dashboard.jsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import ChatNavbar from '../components/chat/ChatNavbar';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 import useChat from '../hooks/useChat';
+import { getTheme } from '../theme/themeOptions';
 
 window.global = window;
 
-const defaultTheme = {
-  pageBackground: '#f5f3ef',
-  surface: '#ffffff',
-  subtle: '#faf7f2',
-  border: '#e8e0d6',
-  accent: '#111111',
-  accentText: '#ffffff',
-  muted: '#8d8479',
-  text: '#111111',
-  shadow: 'rgba(24, 18, 12, 0.08)',
+const MOBILE_BREAKPOINT = 640;
+
+const DASHBOARD_RESPONSIVE_STYLES = `
+  .dashboard-page { overflow: hidden; }
+
+  @media (max-width: 900px) {
+    .dashboard-page { min-height: 100dvh; }
+    .dashboard-navbar {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas: "brand actions" "search search";
+      align-items: center !important;
+      padding: 14px 16px !important;
+    }
+    .dashboard-brand { grid-area: brand; min-width: 0; flex: initial !important; }
+    .dashboard-search { grid-area: search; flex: initial !important; max-width: 100% !important; width: 100%; }
+    .dashboard-actions { grid-area: actions; margin-left: 0; justify-self: end; }
+    .dashboard-layout { padding: 14px !important; }
+    .sidebar {
+      position: fixed; left: 14px; top: 94px; bottom: 14px;
+      z-index: 1000; transform: translateX(-120%); transition: transform 0.3s ease;
+      max-width: calc(100vw - 28px);
+      width: min(320px, calc(100vw - 28px)) !important;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .mobile-menu-btn { display: flex !important; }
+    .dashboard-chat-window { border-radius: 24px !important; }
+    .dashboard-chat-header { padding: 16px !important; }
+    .dashboard-composer { padding: 14px 16px !important; }
+  }
+
+  @media (max-width: 640px) {
+    .dashboard-page { overflow: auto; }
+    .dashboard-page--mobile-chat { height: 100dvh !important; }
+    .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
+    .dashboard-brand { gap: 8px !important; }
+    .dashboard-brand-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; font-size: 13px !important; }
+    .dashboard-brand-copy h1 { font-size: 18px !important; line-height: 1.1; }
+    .dashboard-brand-copy p { display: none; }
+    .dashboard-search { padding: 10px 12px !important; gap: 8px !important; }
+    .dashboard-search-input { font-size: 13px !important; }
+    .dashboard-actions { gap: 4px !important; }
+    .dashboard-profile-button { width: 34px !important; height: 34px !important; font-size: 12px !important; }
+    .dashboard-logout-button, .mobile-menu-btn { padding: 6px !important; }
+    .dashboard-layout { padding: 0 !important; gap: 0 !important; }
+    .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
+      padding: 0 !important; gap: 0 !important; min-height: calc(100dvh - 94px);
+    }
+    .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
+      min-height: 100dvh !important;
+    }
+    .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
+      position: relative !important; left: auto !important; top: auto !important;
+      bottom: auto !important; transform: none !important; z-index: auto !important;
+      width: 100% !important; max-width: 100% !important; min-height: 100%;
+      border-radius: 0 !important; border: none !important; box-shadow: none !important;
+    }
+    .mobile-menu-btn { display: none !important; }
+    .dashboard-chat-window { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
+    .dashboard-chat-header {
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 12px !important;
+    }
+    .dashboard-chat-header > div:nth-child(2) {
+      width: 40px !important;
+      height: 40px !important;
+      border-radius: 14px !important;
+    }
+    .dashboard-chat-status {
+      width: auto !important;
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 10px !important;
+      padding: 6px 8px !important;
+    }
+    .dashboard-composer {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 10px !important;
+      padding: 10px 12px max(10px, env(safe-area-inset-bottom)) !important;
+    }
+    .dashboard-send-button {
+      width: 44px !important;
+      min-width: 44px !important;
+      height: 44px !important;
+      padding: 0 !important;
+      justify-content: center !important;
+    }
+    .dashboard-chat-window input[type="text"] {
+      width: auto !important;
+      flex: 1 1 auto !important;
+      min-width: 0 !important;
+    }
+    .sidebar--mobile-page > div:first-child { padding: 14px 12px 10px !important; }
+    .sidebar--mobile-page > div:nth-child(2) { padding: 8px 8px 10px !important; }
+  }
+`;
+
+const getCurrentCompactMode = () =>
+  typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT;
+
+const getLayoutState = (isCompactMobile, selectedUser) => {
+  const hasSelectedUser = Boolean(selectedUser);
+
+  return {
+    showTopNavbar: !isCompactMobile || !hasSelectedUser,
+    showSidebar: !isCompactMobile || !hasSelectedUser,
+    showChatWindow: !isCompactMobile || hasSelectedUser,
+    showMobileListPage: isCompactMobile && !hasSelectedUser,
+    showMobileChatPage: isCompactMobile && hasSelectedUser,
+  };
 };
 
+const chatWindowStyle = (theme, isCompactMobile) => ({
+  background: theme.surface,
+  border: `1px solid ${theme.border}`,
+  boxShadow: `0 18px 42px ${theme.shadow}`,
+  overflow: 'hidden',
+  ...(isCompactMobile ? {} : {}),
+});
+
 const Dashboard = ({
-  theme = defaultTheme,
+  theme = getTheme(),
   user,
-  onLogout,
   onNavigateToProfile,
   onNavigateToSettings,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isCompactMobile, setIsCompactMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth <= 640
-  );
+  const [isCompactMobile, setIsCompactMobile] = useState(getCurrentCompactMode);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const {
     users,
@@ -45,27 +155,30 @@ const Dashboard = ({
     sendMessage,
   } = useChat({ user });
 
-  // Responsive listener
   useEffect(() => {
-    const onResize = () => setIsCompactMobile(window.innerWidth <= 640);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const updateCompactMode = () => {
+      setIsCompactMobile(getCurrentCompactMode());
+    };
+
+    window.addEventListener('resize', updateCompactMode);
+
+    return () => {
+      window.removeEventListener('resize', updateCompactMode);
+    };
   }, []);
 
-  // Mobile menu close karo jab compact mode se bahar jao
   useEffect(() => {
-    if (isCompactMobile) setMobileMenuOpen(false);
+    if (isCompactMobile) {
+      setIsSidebarOpen(false);
+    }
   }, [isCompactMobile]);
 
-  const showMobileListPage = isCompactMobile && !selectedUser;
-  const showSidebarPanel = !isCompactMobile || !selectedUser;
-  const showChatPanel = !isCompactMobile || Boolean(selectedUser);
-  const showTopNavbar = !isCompactMobile || !selectedUser;
+  const layout = getLayoutState(isCompactMobile, selectedUser);
 
   return (
     <div
       className={`dashboard-page h-screen flex flex-col overflow-hidden ${
-        isCompactMobile && selectedUser ? 'dashboard-page--mobile-chat' : ''
+        layout.showMobileChatPage ? 'dashboard-page--mobile-chat' : ''
       }`}
       style={{
         background: theme.pageBackground,
@@ -73,59 +186,52 @@ const Dashboard = ({
         color: theme.text,
       }}
     >
-      {showTopNavbar && (
+      {layout.showTopNavbar && (
         <ChatNavbar
           theme={theme}
           user={user}
           searchQuery={searchQuery}
+          showSearch={layout.showMobileListPage || !isCompactMobile}
           onSearchChange={setSearchQuery}
-          showSearch={showMobileListPage || !isCompactMobile}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToSettings={onNavigateToSettings}
-          onLogout={onLogout}
-          onOpenSidebar={() => setMobileMenuOpen(true)}
+          onOpenSidebar={() => setIsSidebarOpen(true)}
         />
       )}
 
-      {/* Overlay for mobile sidebar */}
-      {!isCompactMobile && mobileMenuOpen && (
+      {!isCompactMobile && isSidebarOpen && (
         <div
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => setIsSidebarOpen(false)}
           className="fixed inset-0 bg-black/35 z-998"
         />
       )}
 
-      {/* Main Layout */}
       <div
-        className={`flex-1 flex overflow-hidden min-h-0 ${
-          showMobileListPage ? 'dashboard-layout--mobile-list' : ''
-        } ${isCompactMobile && selectedUser ? 'dashboard-layout--mobile-chat' : ''}`}
+        className={`dashboard-layout flex-1 flex overflow-hidden min-h-0 ${
+          layout.showMobileListPage ? 'dashboard-layout--mobile-list' : ''
+        } ${layout.showMobileChatPage ? 'dashboard-layout--mobile-chat' : ''}`}
       >
-        {showSidebarPanel && (
+        {layout.showSidebar && (
           <ChatSidebar
             theme={theme}
             users={users}
             selectedUser={selectedUser}
             searchQuery={searchQuery}
             isCompactMobile={isCompactMobile}
-            mobileMenuOpen={mobileMenuOpen}
-            onSelectUser={selectUser}
-            onNavigateToSettings={onNavigateToSettings}
+            isSidebarOpen={isSidebarOpen}
+            onSelectUser={(chatUser) => {
+              setIsSidebarOpen(false);
+              void selectUser(chatUser);
+            }}
           />
         )}
 
-        {showChatPanel && (
+        {layout.showChatWindow && (
           <div
-            className={`flex-1 min-h-0 overflow-hidden flex flex-col ${
+            className={`dashboard-chat-window flex-1 min-h-0 overflow-hidden flex flex-col ${
               isCompactMobile ? 'dashboard-chat-window--mobile-page' : ''
             }`}
-            style={{
-              background: theme.surface,
-              border: `1px solid ${theme.border}`,
-              // borderRadius: '32px',
-              boxShadow: `0 18px 42px ${theme.shadow}`,
-              overflow: 'hidden',
-            }}
+            style={chatWindowStyle(theme, isCompactMobile)}
           >
             <ChatWindow
               theme={theme}
@@ -144,105 +250,7 @@ const Dashboard = ({
         )}
       </div>
 
-      <style>{`
-        .dashboard-page { overflow: hidden; }
-
-        @media (max-width: 900px) {
-          .dashboard-page { min-height: 100dvh; }
-          .dashboard-navbar {
-            display: grid !important;
-            grid-template-columns: minmax(0, 1fr) auto;
-            grid-template-areas: "brand actions" "search search";
-            align-items: center !important;
-            padding: 14px 16px !important;
-          }
-          .dashboard-brand { grid-area: brand; min-width: 0; flex: initial !important; }
-          .dashboard-search { grid-area: search; flex: initial !important; max-width: 100% !important; width: 100%; }
-          .dashboard-actions { grid-area: actions; margin-left: 0; justify-self: end; }
-          .dashboard-layout { padding: 14px !important; }
-          .sidebar {
-            position: fixed; left: 14px; top: 94px; bottom: 14px;
-            z-index: 1000; transform: translateX(-120%); transition: transform 0.3s ease;
-            max-width: calc(100vw - 28px);
-            width: min(320px, calc(100vw - 28px)) !important;
-          }
-          .sidebar.open { transform: translateX(0); }
-          .mobile-menu-btn { display: flex !important; }
-          .dashboard-chat-window { border-radius: 24px !important; }
-          .dashboard-chat-header { padding: 16px !important; }
-          .dashboard-composer { padding: 14px 16px !important; }
-        }
-
-        @media (max-width: 640px) {
-          .dashboard-page { overflow: auto; }
-          .dashboard-page--mobile-chat { height: 100dvh !important; }
-          .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
-          .dashboard-brand { gap: 8px !important; }
-          .dashboard-brand-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; font-size: 13px !important; }
-          .dashboard-brand-copy h1 { font-size: 18px !important; line-height: 1.1; }
-          .dashboard-brand-copy p { display: none; }
-          .dashboard-search { padding: 10px 12px !important; gap: 8px !important; }
-          .dashboard-search-input { font-size: 13px !important; }
-          .dashboard-actions { gap: 4px !important; }
-          .dashboard-profile-button { width: 34px !important; height: 34px !important; font-size: 12px !important; }
-          .dashboard-logout-button, .mobile-menu-btn { padding: 6px !important; }
-          .dashboard-layout { padding: 0 !important; gap: 0 !important; }
-          .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
-            padding: 0 !important; gap: 0 !important; min-height: calc(100dvh - 94px);
-          }
-          .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
-            min-height: 100dvh !important;
-          }
-          .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
-            position: relative !important; left: auto !important; top: auto !important;
-            bottom: auto !important; transform: none !important; z-index: auto !important;
-            width: 100% !important; max-width: 100% !important; min-height: 100%;
-            border-radius: 0 !important; border: none !important; box-shadow: none !important;
-          }
-          .mobile-menu-btn { display: none !important; }
-          .dashboard-chat-window { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
-          .dashboard-chat-header {
-            flex-wrap: nowrap !important;
-            align-items: center !important;
-            gap: 10px !important;
-            padding: 12px !important;
-          }
-          .dashboard-chat-header > div:nth-child(2) {
-            width: 40px !important;
-            height: 40px !important;
-            border-radius: 14px !important;
-          }
-          .dashboard-chat-status {
-            width: auto !important;
-            max-width: 110px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 10px !important;
-            padding: 6px 8px !important;
-          }
-          .dashboard-composer {
-            flex-direction: row !important;
-            align-items: center !important;
-            gap: 10px !important;
-            padding: 10px 12px max(10px, env(safe-area-inset-bottom)) !important;
-          }
-          .dashboard-send-button {
-            width: 44px !important;
-            min-width: 44px !important;
-            height: 44px !important;
-            padding: 0 !important;
-            justify-content: center !important;
-          }
-          .dashboard-chat-window input[type="text"] {
-            width: auto !important;
-            flex: 1 1 auto !important;
-            min-width: 0 !important;
-          }
-          .sidebar--mobile-page > div:first-child { padding: 14px 12px 10px !important; }
-          .sidebar--mobile-page > div:nth-child(2) { padding: 8px 8px 10px !important; }
-        }
-      `}</style>
+      <style>{DASHBOARD_RESPONSIVE_STYLES}</style>
     </div>
   );
 };

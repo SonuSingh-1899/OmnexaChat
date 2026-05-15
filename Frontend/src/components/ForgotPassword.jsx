@@ -1,5 +1,7 @@
 // pages/ForgotPassword.jsx
 import { useState } from 'react';
+import AuthCard from './AuthCard';
+import InputField from './InputField';
 import { profileApi } from '../lib/api';
 
 const ForgotPassword = ({ onNavigateToLogin, onOtpSent }) => {
@@ -42,59 +44,41 @@ const ForgotPassword = ({ onNavigateToLogin, onOtpSent }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f3ef] font-sans flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-2xl p-10 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+    <AuthCard
+      title="Forgot Password"
+      subtitle="Enter your email and we will send you a one-time code to securely recover your Omnexa account."
+      showBack
+      onBack={onNavigateToLogin}
+    >
+      {message.text && (
+        <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm ${
+          message.type === 'success'
+            ? 'border-green-200 bg-green-50 text-green-700'
+            : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <InputField
+          label="Email Address"
+          type="email"
+          name="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="you@example.com"
+        />
+
         <button
-          onClick={onNavigateToLogin}
-          className="bg-none border-none cursor-pointer flex items-center gap-1.5 text-stone-400 text-[13px] mb-8"
+          type="submit"
+          disabled={loading}
+          className="mt-2 w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-          Back to Login
+          {loading ? 'Sending...' : 'Send OTP'}
         </button>
-
-        <h1 className="font-serif text-[28px] font-normal text-black mb-2">
-          Forgot Password?
-        </h1>
-        <p className="text-[13px] text-stone-400 mb-8">
-          Enter your email and we'll send you an OTP to reset your password.
-        </p>
-
-        {message.text && (
-          <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
-            message.type === 'success' 
-              ? 'bg-green-50 text-green-700 border border-green-200' 
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {message.text}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-7">
-            <label className="block text-[11px] font-medium text-stone-400 uppercase tracking-[0.8px] mb-1.5">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full p-3 border border-stone-200 rounded-lg text-sm font-sans outline-none"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-black text-white py-3.5 border-none rounded-lg text-sm font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Sending...' : 'Send OTP'}
-          </button>
-        </form>
-      </div>
-    </div>
+      </form>
+    </AuthCard>
   );
 };
 

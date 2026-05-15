@@ -27,7 +27,7 @@ const Settings = ({
           </svg>
           Back to Chat
         </button>
-        <h1 className="font-serif text-xl md:text-2xl font-normal m-0">
+        <h1 className="font-serif text-xl md:text-2xl font-normal m-0 flex-1 text-center md:flex-none">
           Settings
         </h1>
         <div className="w-17.5 md:w-27.5" />
@@ -64,8 +64,6 @@ const Settings = ({
                 >
                   <div className="flex gap-2.5 mb-3.5">
                     <span className="w-5.5 h-5.5 rounded-full" style={{ background: option.accent }} />
-                    {/* <span className="w-5.5 h-5.5 rounded-full border" style={{ background: option.subtle, borderColor: option.border }} />
-                    <span className="w-5.5 h-5.5 rounded-full border" style={{ background: option.pageBackground, borderColor: option.border }} /> */}
                   </div>
                   <p className="font-semibold text-[15px] m-0 mb-1.5" style={{ color: option.text }}>
                     {option.label}
