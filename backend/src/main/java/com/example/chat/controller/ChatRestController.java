@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
+import com.example.chat.exception.BusinessException;
 import com.example.chat.service.ChatService;
 import com.example.chat.service.UserProfileService;
 
@@ -46,13 +47,21 @@ public class ChatRestController {
             @RequestParam String user1,
             @RequestParam String user2,
             @RequestParam(defaultValue = "0") int page) {
-        return ResponseEntity.ok(chatService.getConversation(user1, user2, page));
+        String currentUserEmail = userProfileService.getCurrentUserEmail();
+        if (!currentUserEmail.equalsIgnoreCase(user1) && !currentUserEmail.equalsIgnoreCase(user2)) {
+            throw new BusinessException("You can access only your own conversations");
+        }
+
+        String otherEmail = currentUserEmail.equalsIgnoreCase(user1) ? user2 : user1;
+        userProfileService.assertUsersConnected(currentUserEmail, otherEmail);
+        return ResponseEntity.ok(chatService.getConversation(currentUserEmail, otherEmail, page));
     }
 
     @GetMapping("/conversation/{otherEmail}")
     public ResponseEntity<List<ChatMessage>> getMyConversation(
             @PathVariable String otherEmail,
             @RequestParam(defaultValue = "0") int page) {
+        userProfileService.assertUsersConnected(otherEmail);
         return ResponseEntity.ok(
             chatService.getConversation(userProfileService.getCurrentUserEmail(), otherEmail, page)
         );
@@ -60,6 +69,7 @@ public class ChatRestController {
 
     @PostMapping("/messages")
     public ResponseEntity<ChatMessage> sendMessage(@Valid @RequestBody ChatMessageRequest request) {
+        userProfileService.assertUsersConnected(request.getReceiverEmail());
         ChatMessage message = chatService.createDirectMessage1(
             userProfileService.getCurrentUserEmail(),
             request.getReceiverEmail(),

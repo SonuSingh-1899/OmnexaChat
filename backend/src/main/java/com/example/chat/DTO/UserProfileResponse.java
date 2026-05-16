@@ -12,6 +12,11 @@ public class UserProfileResponse {
     private String avatarUrl;
     private boolean isVerified;
     private boolean isActive;
+    private boolean isConnected;
+    private boolean isRequestSent;
+    private boolean isRequestReceived;
+    private long followersCount;
+    private long followingCount;
     private LocalDateTime lastloginAt;
     private LocalDateTime createdAt;
 }

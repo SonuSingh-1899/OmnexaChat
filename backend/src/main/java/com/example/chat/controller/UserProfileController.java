@@ -72,4 +72,41 @@ public class UserProfileController {
     public ResponseEntity<List<UserProfileResponse>> getAllUsers() {
         return ResponseEntity.ok(userProfileService.getAllUsers());
     }
+
+    @GetMapping("/connections")
+    public ResponseEntity<List<UserProfileResponse>> getConnectedUsers() {
+        return ResponseEntity.ok(userProfileService.getConnectedUsers());
+    }
+
+    @GetMapping("/users/search")
+    public ResponseEntity<List<UserProfileResponse>> searchUsers(@RequestParam(defaultValue = "") String query) {
+        return ResponseEntity.ok(userProfileService.searchUsers(query));
+    }
+
+    @GetMapping("/requests/incoming")
+    public ResponseEntity<List<UserProfileResponse>> getIncomingRequests() {
+        return ResponseEntity.ok(userProfileService.getIncomingRequests());
+    }
+
+    @PostMapping("/requests/{userId}")
+    public ResponseEntity<UserProfileResponse> sendFollowRequest(@PathVariable Long userId) {
+        return ResponseEntity.ok(userProfileService.sendFollowRequest(userId));
+    }
+
+    @PostMapping("/requests/{userId}/accept")
+    public ResponseEntity<UserProfileResponse> acceptFollowRequest(@PathVariable Long userId) {
+        return ResponseEntity.ok(userProfileService.acceptFollowRequest(userId));
+    }
+
+    @PostMapping("/presence/ping")
+    public ResponseEntity<Map<String, String>> markPresenceOnline() {
+        userProfileService.markCurrentUserOnline();
+        return ResponseEntity.ok(Map.of("message", "presence updated"));
+    }
+
+    @PostMapping("/presence/offline")
+    public ResponseEntity<Map<String, String>> markPresenceOffline() {
+        userProfileService.markCurrentUserOffline();
+        return ResponseEntity.ok(Map.of("message", "presence updated"));
+    }
 }

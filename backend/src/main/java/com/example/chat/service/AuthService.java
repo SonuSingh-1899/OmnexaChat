@@ -1,5 +1,6 @@
 package com.example.chat.service;
 
+import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.Random;
 
@@ -141,6 +142,10 @@ public class AuthService {
         if (!user.isVerified()) {
             throw new BusinessException("Email not verified. Please verify your email first.");
         }
+
+        user.setActive(true);
+        user.setLastloginAt(LocalDateTime.now());
+        userRepository.save(user);
         
         return jwtService.generateToken(user);
     }
