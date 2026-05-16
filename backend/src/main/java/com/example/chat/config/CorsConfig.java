@@ -13,7 +13,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         config.setAllowCredentials(true);
-        config.addAllowedOriginPattern("http://localhost:5173"); 
+        config.addAllowedOriginPattern("http://localhost:5173, https://vercel.com/sonu595s-projects"); 
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
         config.addExposedHeader("Authorization");
