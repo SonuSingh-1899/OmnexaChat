@@ -331,6 +331,7 @@ const App = () => {
         user={currentUser}
         onNavigateToProfile={() => navigateTo(ROUTES.profile)}
         onNavigateToSettings={() => navigateTo(ROUTES.settings)}
+        onRefreshCurrentUser={loadCurrentUser}
       />
     );
   }

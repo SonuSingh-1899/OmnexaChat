@@ -23,6 +23,28 @@ const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshProfile = async () => {
+      try {
+        const latestProfile = await profileApi.getMe();
+        if (isMounted) {
+          onUserUpdated?.(latestProfile);
+          localStorage.setItem('user', JSON.stringify(latestProfile));
+        }
+      } catch (error) {
+        console.error('Failed to refresh profile:', error);
+      }
+    };
+
+    void refreshProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onUserUpdated]);
+
   const openEditMode = () => {
     setFormData({
       name: user?.name || '',
@@ -147,6 +169,20 @@ const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
           <p className="text-sm text-stone-500">
             {user?.email}
           </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3">
+              <p className="m-0 text-xs uppercase tracking-[0.18em] text-stone-400">Followers</p>
+              <p className="mt-2 mb-0 text-2xl font-semibold text-stone-800">
+                {user?.followersCount ?? 0}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3">
+              <p className="m-0 text-xs uppercase tracking-[0.18em] text-stone-400">Following</p>
+              <p className="mt-2 mb-0 text-2xl font-semibold text-stone-800">
+                {user?.followingCount ?? 0}
+              </p>
+            </div>
+          </div>
         </div>
 
         {message.text && (

@@ -3,10 +3,12 @@ import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
 const USER_REFRESH_INTERVAL = 20000;
+const SEARCH_DEBOUNCE_MS = 250;
 
 const sortMessagesByTime = (messageList) =>
-  [...messageList].sort((firstMessage, secondMessage) =>
-    new Date(firstMessage.timestamp) - new Date(secondMessage.timestamp)
+  [...messageList].sort(
+    (firstMessage, secondMessage) =>
+      new Date(firstMessage.timestamp) - new Date(secondMessage.timestamp)
   );
 
 const addMessageIfMissing = (messageList, incomingMessage) => {
@@ -26,62 +28,137 @@ const updateUserPreview = (userList, email, content, timestamp) =>
       : chatUser
   );
 
-export default function useChat({ user }) {
-  const [users, setUsers] = useState([]);
+const findUserByEmail = (email, ...userCollections) => {
+  if (!email) {
+    return null;
+  }
+
+  for (const collection of userCollections) {
+    const matchedUser = collection.find((chatUser) => chatUser.email === email);
+    if (matchedUser) {
+      return matchedUser;
+    }
+  }
+
+  return null;
+};
+
+export default function useChat({ user, searchQuery, onConnectionChange }) {
+  const [connectedUsers, setConnectedUsers] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const [actionUserId, setActionUserId] = useState(null);
 
-  const refreshUsers = useCallback(async () => {
+  const refreshConnectedUsers = useCallback(async () => {
     if (!user?.email) {
       return;
     }
 
     try {
-      const allUsers = await profileApi.listUsers();
-      const otherUsers = allUsers.filter((chatUser) => chatUser.email !== user.email);
+      const [nextConnectedUsers, nextIncomingRequests] = await Promise.all([
+        profileApi.listConnectedUsers(),
+        profileApi.listIncomingRequests(),
+      ]);
 
-      setUsers(otherUsers);
-      setSelectedUser((currentSelectedUser) => {
-        if (!currentSelectedUser) {
-          return null;
-        }
-
-        const latestSelectedUser = otherUsers.find(
-          (chatUser) => chatUser.email === currentSelectedUser.email
-        );
-
-        return latestSelectedUser || currentSelectedUser;
-      });
+      setConnectedUsers(nextConnectedUsers);
+      setIncomingRequests(nextIncomingRequests);
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('Failed to fetch connection data:', error);
     }
   }, [user?.email]);
+
+  const refreshSearchResults = useCallback(async () => {
+    if (!user?.email) {
+      return;
+    }
+
+    const normalizedQuery = searchQuery.trim();
+    if (!normalizedQuery) {
+      setSearchResults([]);
+      setSearchingUsers(false);
+      return;
+    }
+
+    setSearchingUsers(true);
+
+    try {
+      const results = await profileApi.searchUsers(normalizedQuery);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      setSearchResults([]);
+    } finally {
+      setSearchingUsers(false);
+    }
+  }, [searchQuery, user?.email]);
 
   useEffect(() => {
     if (!user?.email) {
       return undefined;
     }
 
-    void refreshUsers();
+    void refreshConnectedUsers();
 
     const refreshTimer = window.setInterval(() => {
-      void refreshUsers();
+      void refreshConnectedUsers();
     }, USER_REFRESH_INTERVAL);
 
     return () => {
       window.clearInterval(refreshTimer);
     };
-  }, [refreshUsers, user?.email]);
+  }, [refreshConnectedUsers, user?.email]);
 
-  const selectUser = useCallback(async (chatUser) => {
-    if (!chatUser?.email) {
+  useEffect(() => {
+    if (!user?.email) {
+      return undefined;
+    }
+
+    const normalizedQuery = searchQuery.trim();
+    if (!normalizedQuery) {
+      setSearchResults([]);
+      setSearchingUsers(false);
+      return undefined;
+    }
+
+    const searchTimer = window.setTimeout(() => {
+      void refreshSearchResults();
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(searchTimer);
+    };
+  }, [refreshSearchResults, searchQuery, user?.email]);
+
+  useEffect(() => {
+    setSelectedUser((currentSelectedUser) => {
+      if (!currentSelectedUser?.email) {
+        return currentSelectedUser;
+      }
+
+      return (
+        findUserByEmail(
+          currentSelectedUser.email,
+          connectedUsers,
+          incomingRequests,
+          searchResults
+        ) || currentSelectedUser
+      );
+    });
+  }, [connectedUsers, incomingRequests, searchResults]);
+
+  const loadConversation = useCallback(async (chatUser) => {
+    if (!chatUser?.email || !chatUser.isConnected) {
+      setMessages([]);
+      setLoadingMessages(false);
       return;
     }
 
-    setSelectedUser(chatUser);
     setLoadingMessages(true);
 
     try {
@@ -95,6 +172,15 @@ export default function useChat({ user }) {
     }
   }, []);
 
+  const selectUser = useCallback(async (chatUser) => {
+    if (!chatUser?.email) {
+      return;
+    }
+
+    setSelectedUser(chatUser);
+    await loadConversation(chatUser);
+  }, [loadConversation]);
+
   const clearSelectedUser = useCallback(() => {
     setSelectedUser(null);
     setMessages([]);
@@ -105,7 +191,7 @@ export default function useChat({ user }) {
   }, []);
 
   const handleUserPreviewUpdate = useCallback((incomingMessage) => {
-    setUsers((currentUsers) =>
+    setConnectedUsers((currentUsers) =>
       updateUserPreview(
         currentUsers,
         incomingMessage.senderEmail,
@@ -134,10 +220,64 @@ export default function useChat({ user }) {
     onUserLastMessageUpdate: handleUserPreviewUpdate,
   });
 
+  const syncAfterRelationshipChange = useCallback(async () => {
+    await Promise.all([refreshConnectedUsers(), refreshSearchResults()]);
+  }, [refreshConnectedUsers, refreshSearchResults]);
+
+  const sendFollowRequest = useCallback(async (chatUser) => {
+    if (!chatUser?.id || actionUserId) {
+      return;
+    }
+
+    setActionUserId(chatUser.id);
+
+    try {
+      const updatedUser = await profileApi.sendFollowRequest(chatUser.id);
+      setSelectedUser((currentSelectedUser) =>
+        currentSelectedUser?.id === updatedUser.id ? updatedUser : currentSelectedUser
+      );
+      await syncAfterRelationshipChange();
+    } catch (error) {
+      console.error('Failed to send follow request:', error);
+    } finally {
+      setActionUserId(null);
+    }
+  }, [actionUserId, syncAfterRelationshipChange]);
+
+  const acceptFollowRequest = useCallback(async (chatUser, options = {}) => {
+    const { openChat = false } = options;
+
+    if (!chatUser?.id || actionUserId) {
+      return;
+    }
+
+    setActionUserId(chatUser.id);
+
+    try {
+      const updatedUser = await profileApi.acceptFollowRequest(chatUser.id);
+      await syncAfterRelationshipChange();
+      await onConnectionChange?.();
+
+      if (openChat) {
+        await selectUser({ ...updatedUser, isConnected: true });
+      } else {
+        setSelectedUser((currentSelectedUser) =>
+          currentSelectedUser?.id === updatedUser.id
+            ? { ...currentSelectedUser, ...updatedUser, isConnected: true }
+            : currentSelectedUser
+        );
+      }
+    } catch (error) {
+      console.error('Failed to accept follow request:', error);
+    } finally {
+      setActionUserId(null);
+    }
+  }, [actionUserId, onConnectionChange, selectUser, syncAfterRelationshipChange]);
+
   const sendMessage = useCallback(async (event) => {
     event.preventDefault();
 
-    if (!newMessage.trim() || !selectedUser || sendingMessage) {
+    if (!newMessage.trim() || !selectedUser || !selectedUser.isConnected || sendingMessage) {
       return;
     }
 
@@ -157,7 +297,9 @@ export default function useChat({ user }) {
     setNewMessage('');
     setSendingMessage(true);
     setMessages((currentMessages) => [...currentMessages, temporaryMessage]);
-    setUsers((currentUsers) => updateUserPreview(currentUsers, selectedUser.email, content, sentAt));
+    setConnectedUsers((currentUsers) =>
+      updateUserPreview(currentUsers, selectedUser.email, content, sentAt)
+    );
     setSelectedUser((currentSelectedUser) =>
       currentSelectedUser
         ? {
@@ -196,15 +338,21 @@ export default function useChat({ user }) {
   }, [newMessage, selectedUser, sendingMessage, user?.email]);
 
   return {
-    users,
+    users: connectedUsers,
+    incomingRequests,
+    searchResults,
     selectedUser,
     messages,
     newMessage,
     setNewMessage,
     loading: loadingMessages,
     sending: sendingMessage,
+    searchingUsers,
+    actionUserId,
     selectUser,
     clearSelectedUser,
     sendMessage,
+    sendFollowRequest,
+    acceptFollowRequest,
   };
 }

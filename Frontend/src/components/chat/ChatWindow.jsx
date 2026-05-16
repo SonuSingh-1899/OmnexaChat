@@ -46,7 +46,7 @@ const EmptyConversationState = ({ theme }) => (
       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={theme.border} strokeWidth="1.5">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
-      <p className="mt-4 text-sm">Select a conversation to start chatting</p>
+      <p className="mt-4 text-sm">Select a connected user or search someone new</p>
     </div>
   </div>
 );
@@ -61,6 +61,94 @@ const EmptyMessagesState = ({ theme }) => (
   </div>
 );
 
+const RelationshipState = ({
+  theme,
+  selectedUser,
+  actionUserId,
+  onSendRequest,
+  onAcceptRequest,
+}) => {
+  const isBusy = actionUserId === selectedUser.id;
+  const statusCopy = selectedUser.isRequestReceived
+    ? {
+        title: `${selectedUser.name} sent you a request`,
+        description: 'Accept this request to connect and unlock chat for both of you.',
+        actionLabel: isBusy ? 'Accepting...' : 'Accept Request',
+        actionType: 'accept',
+      }
+    : selectedUser.isRequestSent
+      ? {
+          title: 'Request sent',
+          description: `You can start chatting with ${selectedUser.name} once they accept your request.`,
+          actionLabel: 'Waiting for acceptance',
+          actionType: 'waiting',
+        }
+      : {
+          title: `Connect with ${selectedUser.name}`,
+          description: 'Send a follow request first. After acceptance, both of you will appear in each others followers, following, and chat list.',
+          actionLabel: isBusy ? 'Sending...' : 'Send Request',
+          actionType: 'send',
+        };
+
+  return (
+    <div
+      className="flex-1 flex items-center justify-center px-6 py-8 text-center"
+      style={{ background: theme.subtle }}
+    >
+      <div className="max-w-md">
+        <div
+          className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center text-2xl font-bold"
+          style={{ background: theme.surface, color: theme.text, boxShadow: `0 14px 30px ${theme.shadow}` }}
+        >
+          {selectedUser.name?.charAt(0)?.toUpperCase() || '?'}
+        </div>
+
+        <h3 className="mt-5 mb-2 text-xl" style={{ color: theme.text }}>
+          {statusCopy.title}
+        </h3>
+        <p className="m-0 text-sm leading-6" style={{ color: theme.muted }}>
+          {statusCopy.description}
+        </p>
+
+        <div className="mt-6">
+          {statusCopy.actionType === 'accept' && (
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => onAcceptRequest(selectedUser)}
+              className="px-5 py-3 rounded-2xl border-none cursor-pointer text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ background: theme.accent, color: theme.accentText }}
+            >
+              {statusCopy.actionLabel}
+            </button>
+          )}
+
+          {statusCopy.actionType === 'send' && (
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => onSendRequest(selectedUser)}
+              className="px-5 py-3 rounded-2xl border-none cursor-pointer text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{ background: theme.accent, color: theme.accentText }}
+            >
+              {statusCopy.actionLabel}
+            </button>
+          )}
+
+          {statusCopy.actionType === 'waiting' && (
+            <span
+              className="inline-flex px-4 py-2 rounded-full text-sm font-medium"
+              style={{ background: theme.surface, color: theme.muted }}
+            >
+              {statusCopy.actionLabel}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ChatWindow = ({
   theme,
   selectedUser,
@@ -69,9 +157,12 @@ const ChatWindow = ({
   loading,
   sending,
   currentUserEmail,
+  actionUserId,
   isCompactMobile,
   onNewMessageChange,
   onSendMessage,
+  onSendRequest,
+  onAcceptRequest,
   onBack,
 }) => {
   const bottomOfMessagesRef = useRef(null);
@@ -86,7 +177,13 @@ const ChatWindow = ({
 
   const userInitial = selectedUser.name?.charAt(0).toUpperCase() || '?';
   const isUserOnline = Boolean(selectedUser.isActive);
-  const userStatusText = isUserOnline ? 'Online' : 'Offline';
+  const userStatusText = selectedUser.isConnected
+    ? isUserOnline ? 'Online' : 'Offline'
+    : selectedUser.isRequestReceived
+      ? 'Request received'
+      : selectedUser.isRequestSent
+        ? 'Pending request'
+        : 'Not connected';
   const conversationSubtitle = getConversationSubtitle(selectedUser);
 
   return (
@@ -130,110 +227,122 @@ const ChatWindow = ({
         <span
           className="dashboard-chat-status text-xs px-2.5 py-1 rounded-full shrink-0"
           style={{
-            background: isUserOnline ? theme.subtle : theme.pageBackground,
-            color: isUserOnline ? theme.accent : theme.muted,
+            background: selectedUser.isConnected && isUserOnline ? theme.subtle : theme.pageBackground,
+            color: selectedUser.isConnected && isUserOnline ? theme.accent : theme.muted,
           }}
         >
           {userStatusText}
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-5" style={{ background: theme.subtle }}>
-        {loading ? (
-          <div className="text-center py-10" style={{ color: theme.muted }}>
-            Loading messages...
-          </div>
-        ) : messages.length === 0 ? (
-          <EmptyMessagesState theme={theme} />
-        ) : (
-          <>
-            {messages.map((message, index) => {
-              const isOwnMessage = message.senderEmail === currentUserEmail;
-              const previousMessage = messages[index - 1];
-              const shouldShowDate =
-                index === 0 ||
-                new Date(message.timestamp).toDateString() !==
-                  new Date(previousMessage?.timestamp).toDateString();
-
-              return (
-                <div key={message.id || index}>
-                  {shouldShowDate && (
-                    <div className="text-center my-6 mb-4">
-                      <span
-                        className="text-xs px-3 py-1 rounded-full inline-block"
-                        style={{ color: theme.muted, background: theme.surface }}
-                      >
-                        {formatMessageDate(message.timestamp)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className={`flex mb-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className="max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 wrap-break-word relative shadow-lg"
-                      style={{
-                        borderRadius: isOwnMessage ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                        background: isOwnMessage ? theme.accent : theme.surface,
-                        color: isOwnMessage ? theme.accentText : theme.text,
-                        boxShadow: `0 10px 24px ${theme.shadow}`,
-                        ...(message.error ? { border: '1px solid #f44336' } : {}),
-                        opacity: message.isTemp ? 0.7 : 1,
-                      }}
-                    >
-                      <p className="m-0 text-xs md:text-sm leading-relaxed wrap-break-word">
-                        {message.content}
-                      </p>
-                      <p className="mt-1 text-[10px] opacity-70 text-right">
-                        {message.isTemp ? 'Sending...' : formatMessageTime(message.timestamp)}
-                        {message.error && <span className="ml-2 text-red-500">Failed</span>}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div ref={bottomOfMessagesRef} />
-          </>
-        )}
-      </div>
-
-      <form
-        className="dashboard-composer flex flex-nowrap w-full items-center gap-2 px-3 py-2 md:px-5 md:py-4 shrink-0"
-        onSubmit={onSendMessage}
-        style={{
-          background: theme.surface,
-          borderTop: `1px solid ${theme.border}`,
-        }}
-      >
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(event) => onNewMessageChange(event.target.value)}
-          placeholder="Type a message..."
-          disabled={sending}
-          className="flex-1 min-w-0 px-4 py-2.5 md:py-3 rounded-full outline-none font-sans text-sm transition-all focus:ring-2"
-          style={{
-            border: `1px solid ${theme.border}`,
-            background: theme.subtle,
-            color: theme.text,
-          }}
+      {!selectedUser.isConnected ? (
+        <RelationshipState
+          theme={theme}
+          selectedUser={selectedUser}
+          actionUserId={actionUserId}
+          onSendRequest={onSendRequest}
+          onAcceptRequest={onAcceptRequest}
         />
-        <button
-          type="submit"
-          disabled={sending || !newMessage.trim()}
-          className="dashboard-send-button min-w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background: theme.accent,
-            color: theme.accentText,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
-      </form>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto px-6 py-5" style={{ background: theme.subtle }}>
+            {loading ? (
+              <div className="text-center py-10" style={{ color: theme.muted }}>
+                Loading messages...
+              </div>
+            ) : messages.length === 0 ? (
+              <EmptyMessagesState theme={theme} />
+            ) : (
+              <>
+                {messages.map((message, index) => {
+                  const isOwnMessage = message.senderEmail === currentUserEmail;
+                  const previousMessage = messages[index - 1];
+                  const shouldShowDate =
+                    index === 0 ||
+                    new Date(message.timestamp).toDateString() !==
+                      new Date(previousMessage?.timestamp).toDateString();
+
+                  return (
+                    <div key={message.id || index}>
+                      {shouldShowDate && (
+                        <div className="text-center my-6 mb-4">
+                          <span
+                            className="text-xs px-3 py-1 rounded-full inline-block"
+                            style={{ color: theme.muted, background: theme.surface }}
+                          >
+                            {formatMessageDate(message.timestamp)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className={`flex mb-3 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className="max-w-[85%] md:max-w-[70%] px-3 md:px-4 py-2 md:py-3 wrap-break-word relative shadow-lg"
+                          style={{
+                            borderRadius: isOwnMessage ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                            background: isOwnMessage ? theme.accent : theme.surface,
+                            color: isOwnMessage ? theme.accentText : theme.text,
+                            boxShadow: `0 10px 24px ${theme.shadow}`,
+                            ...(message.error ? { border: '1px solid #f44336' } : {}),
+                            opacity: message.isTemp ? 0.7 : 1,
+                          }}
+                        >
+                          <p className="m-0 text-xs md:text-sm leading-relaxed wrap-break-word">
+                            {message.content}
+                          </p>
+                          <p className="mt-1 text-[10px] opacity-70 text-right">
+                            {message.isTemp ? 'Sending...' : formatMessageTime(message.timestamp)}
+                            {message.error && <span className="ml-2 text-red-500">Failed</span>}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div ref={bottomOfMessagesRef} />
+              </>
+            )}
+          </div>
+
+          <form
+            className="dashboard-composer flex flex-nowrap w-full items-center gap-2 px-3 py-2 md:px-5 md:py-4 shrink-0"
+            onSubmit={onSendMessage}
+            style={{
+              background: theme.surface,
+              borderTop: `1px solid ${theme.border}`,
+            }}
+          >
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(event) => onNewMessageChange(event.target.value)}
+              placeholder="Type a message..."
+              disabled={sending}
+              className="flex-1 min-w-0 px-4 py-2.5 md:py-3 rounded-full outline-none font-sans text-sm transition-all focus:ring-2"
+              style={{
+                border: `1px solid ${theme.border}`,
+                background: theme.subtle,
+                color: theme.text,
+              }}
+            />
+            <button
+              type="submit"
+              disabled={sending || !newMessage.trim()}
+              className="dashboard-send-button min-w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shrink-0 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: theme.accent,
+                color: theme.accentText,
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 };

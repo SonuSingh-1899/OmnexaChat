@@ -25,19 +25,167 @@ const formatLastMessageTime = (timestamp) => {
 const getUserInitial = (name) => name?.charAt(0).toUpperCase() || '?';
 
 const matchesSearch = (chatUser, searchQuery) =>
-  chatUser.name?.toLowerCase().includes(searchQuery.trim().toLowerCase());
+  chatUser.name?.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+  chatUser.email?.toLowerCase().includes(searchQuery.trim().toLowerCase());
+
+const getActionConfig = (chatUser, isBusy) => {
+  if (chatUser.isConnected) {
+    return {
+      label: 'Open chat',
+      disabled: false,
+      appearance: 'secondary',
+      action: 'open-chat',
+    };
+  }
+
+  if (chatUser.isRequestReceived) {
+    return {
+      label: isBusy ? 'Accepting...' : 'Accept',
+      disabled: isBusy,
+      appearance: 'primary',
+      action: 'accept',
+    };
+  }
+
+  if (chatUser.isRequestSent) {
+    return {
+      label: 'Requested',
+      disabled: true,
+      appearance: 'secondary',
+      action: 'requested',
+    };
+  }
+
+  return {
+    label: isBusy ? 'Sending...' : 'Add friend',
+    disabled: isBusy,
+    appearance: 'primary',
+    action: 'send-request',
+  };
+};
+
+const SectionTitle = ({ children, theme }) => (
+  <p
+    className="m-0 mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+    style={{ color: theme.muted }}
+  >
+    {children}
+  </p>
+);
+
+const UserCard = ({
+  chatUser,
+  theme,
+  isSelected,
+  subtitle,
+  trailingText,
+  actionConfig,
+  onClick,
+  onAction,
+}) => (
+  <div
+    onClick={onClick}
+    className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer mb-2 transition-colors duration-200"
+    style={{
+      background: isSelected ? theme.subtle : 'transparent',
+    }}
+    onMouseEnter={(event) => {
+      if (!isSelected) {
+        event.currentTarget.style.background = theme.subtle;
+      }
+    }}
+    onMouseLeave={(event) => {
+      if (!isSelected) {
+        event.currentTarget.style.background = 'transparent';
+      }
+    }}
+  >
+    <div
+      className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold"
+      style={{ background: theme.pageBackground, color: theme.text }}
+    >
+      {getUserInitial(chatUser.name)}
+    </div>
+
+    <div className="flex-1 min-w-0">
+      <div className="flex justify-between items-baseline gap-2">
+        <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
+          {chatUser.name}
+        </p>
+
+        {trailingText && (
+          <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
+            {trailingText}
+          </span>
+        )}
+      </div>
+
+      <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
+        {subtitle}
+      </p>
+    </div>
+
+    {actionConfig && (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onAction?.(actionConfig.action, chatUser);
+        }}
+        disabled={actionConfig.disabled}
+        className="shrink-0 px-3 py-2 rounded-xl border-none text-xs font-semibold cursor-pointer transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+        style={{
+          background: actionConfig.appearance === 'primary' ? theme.accent : theme.pageBackground,
+          color: actionConfig.appearance === 'primary' ? theme.accentText : theme.text,
+        }}
+      >
+        {actionConfig.label}
+      </button>
+    )}
+  </div>
+);
 
 const ChatSidebar = ({
   theme,
   users,
+  incomingRequests,
+  searchResults,
   selectedUser,
   searchQuery,
+  isSearching,
+  actionUserId,
   isCompactMobile,
   isSidebarOpen,
   onSelectUser,
+  onSendRequest,
+  onAcceptRequest,
   onNavigateToSettings,
 }) => {
-  const filteredUsers = users.filter((chatUser) => matchesSearch(chatUser, searchQuery));
+  const normalizedSearch = searchQuery.trim();
+  const connectedMatches = users.filter((chatUser) => matchesSearch(chatUser, searchQuery));
+  const showRequestSection = !normalizedSearch && incomingRequests.length > 0;
+  const showSearchSection = Boolean(normalizedSearch);
+
+  const handleCardAction = (action, chatUser) => {
+    if (action === 'accept') {
+      void onAcceptRequest(chatUser);
+      return;
+    }
+
+    if (action === 'send-request') {
+      void onSendRequest(chatUser);
+      return;
+    }
+
+    if (action === 'open-chat') {
+      void onSelectUser(chatUser);
+    }
+  };
+
+  const shouldShowConnectedEmptyState =
+    !connectedMatches.length && !showSearchSection && !showRequestSection;
+  const shouldShowSearchEmptyState =
+    showSearchSection && !isSearching && !connectedMatches.length && !searchResults.length;
 
   return (
     <div
@@ -51,60 +199,73 @@ const ChatSidebar = ({
       }}
     >
       <div className="flex-1 overflow-y-auto px-3 py-2.5">
-        {filteredUsers.length === 0 ? (
-          <p className="text-center py-10 px-5" style={{ color: theme.muted }}>
-            {searchQuery.trim() ? 'No user found' : 'No other users found'}
-          </p>
-        ) : (
-          filteredUsers.map((chatUser) => {
-            const isSelected = selectedUser?.id === chatUser.id;
-
-            return (
-              <div
-                key={chatUser.id}
+        {showRequestSection && (
+          <div className="mb-4">
+            <SectionTitle theme={theme}>Pending Requests</SectionTitle>
+            {incomingRequests.map((chatUser) => (
+              <UserCard
+                key={`request-${chatUser.id}`}
+                chatUser={chatUser}
+                theme={theme}
+                isSelected={selectedUser?.id === chatUser.id}
+                subtitle={`${chatUser.email} wants to connect`}
+                actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
                 onClick={() => onSelectUser(chatUser)}
-                className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer mb-2 transition-colors duration-200"
-                style={{
-                  background: isSelected ? theme.subtle : 'transparent',
-                }}
-                onMouseEnter={(event) => {
-                  if (!isSelected) {
-                    event.currentTarget.style.background = theme.subtle;
-                  }
-                }}
-                onMouseLeave={(event) => {
-                  if (!isSelected) {
-                    event.currentTarget.style.background = 'transparent';
-                  }
-                }}
-              >
-                <div
-                  className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold"
-                  style={{ background: theme.pageBackground, color: theme.text }}
-                >
-                  {getUserInitial(chatUser.name)}
-                </div>
+                onAction={handleCardAction}
+              />
+            ))}
+          </div>
+        )}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-baseline gap-2">
-                    <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
-                      {chatUser.name}
-                    </p>
+        <div>
+          <SectionTitle theme={theme}>Connected Users</SectionTitle>
+          {connectedMatches.map((chatUser) => (
+            <UserCard
+              key={`connected-${chatUser.id}`}
+              chatUser={chatUser}
+              theme={theme}
+              isSelected={selectedUser?.id === chatUser.id}
+              subtitle={chatUser.lastMessage || 'Ready to chat'}
+              trailingText={chatUser.lastMessageTime ? formatLastMessageTime(chatUser.lastMessageTime) : ''}
+              onClick={() => onSelectUser(chatUser)}
+            />
+          ))}
+        </div>
 
-                    {chatUser.lastMessageTime && (
-                      <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
-                        {formatLastMessageTime(chatUser.lastMessageTime)}
-                      </span>
-                    )}
-                  </div>
+        {showSearchSection && (
+          <div className="mt-4">
+            <SectionTitle theme={theme}>Search Results</SectionTitle>
+            {isSearching ? (
+              <p className="text-center py-8 px-5 text-sm" style={{ color: theme.muted }}>
+                Searching users...
+              </p>
+            ) : (
+              searchResults.map((chatUser) => (
+                <UserCard
+                  key={`search-${chatUser.id}`}
+                  chatUser={chatUser}
+                  theme={theme}
+                  isSelected={selectedUser?.id === chatUser.id}
+                  subtitle={chatUser.bio?.trim() || chatUser.email}
+                  actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
+                  onClick={() => onSelectUser(chatUser)}
+                  onAction={handleCardAction}
+                />
+              ))
+            )}
+          </div>
+        )}
 
-                  <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
-                    {chatUser.lastMessage || 'Click to start chatting'}
-                  </p>
-                </div>
-              </div>
-            );
-          })
+        {shouldShowConnectedEmptyState && (
+          <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
+            No connected users yet. Search someone above and send a request.
+          </p>
+        )}
+
+        {shouldShowSearchEmptyState && (
+          <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
+            No matching users found.
+          </p>
         )}
       </div>
 

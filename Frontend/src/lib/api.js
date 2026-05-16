@@ -23,6 +23,23 @@ export const api = axios.create({
 
 export const FORGOT_PASSWORD_EMAIL_KEY = 'forgotPasswordEmail';
 
+const normalizeUserProfile = (user) => {
+  if (!user) {
+    return user;
+  }
+
+  return {
+    ...user,
+    isVerified: Boolean(user.isVerified ?? user.verified),
+    isActive: Boolean(user.isActive ?? user.active),
+    isConnected: Boolean(user.isConnected ?? user.connected),
+    isRequestSent: Boolean(user.isRequestSent ?? user.requestSent),
+    isRequestReceived: Boolean(user.isRequestReceived ?? user.requestReceived),
+    followersCount: user.followersCount ?? 0,
+    followingCount: user.followingCount ?? 0,
+  };
+};
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) {
@@ -53,11 +70,11 @@ export const authApi = {
 export const profileApi = {
   getMe: async () => {
     const { data } = await api.get('/profile/me');
-    return data;
+    return normalizeUserProfile(data);
   },
   update: async (payload) => {
     const { data } = await api.put('/profile/update', payload);
-    return data;
+    return normalizeUserProfile(data);
   },
   changePassword: async (payload) => {
     const { data } = await api.post('/profile/change-password', payload);
@@ -65,7 +82,27 @@ export const profileApi = {
   },
   listUsers: async () => {
     const { data } = await api.get('/profile/users');
-    return data;
+    return data.map(normalizeUserProfile);
+  },
+  listConnectedUsers: async () => {
+    const { data } = await api.get('/profile/connections');
+    return data.map(normalizeUserProfile);
+  },
+  searchUsers: async (query) => {
+    const { data } = await api.get(`/profile/users/search?query=${encodeURIComponent(query)}`);
+    return data.map(normalizeUserProfile);
+  },
+  listIncomingRequests: async () => {
+    const { data } = await api.get('/profile/requests/incoming');
+    return data.map(normalizeUserProfile);
+  },
+  sendFollowRequest: async (userId) => {
+    const { data } = await api.post(`/profile/requests/${userId}`);
+    return normalizeUserProfile(data);
+  },
+  acceptFollowRequest: async (userId) => {
+    const { data } = await api.post(`/profile/requests/${userId}/accept`);
+    return normalizeUserProfile(data);
   },
   pingPresence: async () => {
     const { data } = await api.post('/profile/presence/ping');

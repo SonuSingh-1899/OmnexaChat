@@ -137,6 +137,7 @@ const Dashboard = ({
   user,
   onNavigateToProfile,
   onNavigateToSettings,
+  onRefreshCurrentUser,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMobile, setIsCompactMobile] = useState(getCurrentCompactMode);
@@ -144,16 +145,26 @@ const Dashboard = ({
 
   const {
     users,
+    incomingRequests,
+    searchResults,
     selectedUser,
     messages,
     newMessage,
     setNewMessage,
     loading,
     sending,
+    searchingUsers,
+    actionUserId,
     selectUser,
     clearSelectedUser,
     sendMessage,
-  } = useChat({ user });
+    sendFollowRequest,
+    acceptFollowRequest,
+  } = useChat({
+    user,
+    searchQuery,
+    onConnectionChange: onRefreshCurrentUser,
+  });
 
   useEffect(() => {
     const updateCompactMode = () => {
@@ -215,14 +226,25 @@ const Dashboard = ({
           <ChatSidebar
             theme={theme}
             users={users}
+            incomingRequests={incomingRequests}
+            searchResults={searchResults}
             selectedUser={selectedUser}
             searchQuery={searchQuery}
+            isSearching={searchingUsers}
+            actionUserId={actionUserId}
             isCompactMobile={isCompactMobile}
             isSidebarOpen={isSidebarOpen}
             onSelectUser={(chatUser) => {
               setIsSidebarOpen(false);
               void selectUser(chatUser);
             }}
+            onSendRequest={(chatUser) => {
+              void sendFollowRequest(chatUser);
+            }}
+            onAcceptRequest={(chatUser) => {
+              void acceptFollowRequest(chatUser, { openChat: true });
+            }}
+            onNavigateToSettings={onNavigateToSettings}
           />
         )}
 
@@ -241,9 +263,16 @@ const Dashboard = ({
               loading={loading}
               sending={sending}
               currentUserEmail={user?.email}
+              actionUserId={actionUserId}
               isCompactMobile={isCompactMobile}
               onNewMessageChange={setNewMessage}
               onSendMessage={sendMessage}
+              onSendRequest={(chatUser) => {
+                void sendFollowRequest(chatUser);
+              }}
+              onAcceptRequest={(chatUser) => {
+                void acceptFollowRequest(chatUser, { openChat: true });
+              }}
               onBack={clearSelectedUser}
             />
           </div>
