@@ -5,5 +5,7 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
       - key: APP_CORS_ALLOWED_ORIGINS
-        value: http://localhost:5173,https://omnexa-flame.vercel.app
+        value: http://localhost:5173,http://127.0.0.1:5173,https://*.vercel.app

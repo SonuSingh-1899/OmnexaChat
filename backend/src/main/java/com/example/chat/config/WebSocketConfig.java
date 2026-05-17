@@ -7,12 +7,14 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import java.util.Arrays;
+
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Value("${app.cors.allowed-origin-patterns:http://localhost:5173,https://omnexa-flame.vercel.app}")
-    private String[] allowedOriginPatterns;
+    @Value("${app.cors.allowed-origin-patterns}")
+    private String allowedOriginPatterns;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -24,7 +26,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns(allowedOriginPatterns)
+                .setAllowedOriginPatterns(parseAllowedOriginPatterns())
                 .withSockJS();
+    }
+
+    private String[] parseAllowedOriginPatterns() {
+        return Arrays.stream(allowedOriginPatterns.split(","))
+            .map(String::trim)
+            .filter(origin -> !origin.isBlank())
+            .toArray(String[]::new);
     }
 }
