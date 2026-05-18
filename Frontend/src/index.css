@@ -5,7 +5,7 @@
 :root {
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: #241a12;
-  background: #efe5d4;
+  background: var(--app-page-background, #efe5d4);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,11 +20,14 @@ html,
 body,
 #root {
   margin: 0;
+  height: 100%;
   min-height: 100%;
+  background: var(--app-page-background, #efe5d4);
 }
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button,

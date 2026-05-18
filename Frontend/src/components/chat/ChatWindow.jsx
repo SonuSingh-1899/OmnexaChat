@@ -1,5 +1,16 @@
 import { useEffect, useRef } from 'react';
 
+const getTimestampValue = (timestamp) => {
+  const resolvedTimestamp = new Date(timestamp).getTime();
+  return Number.isNaN(resolvedTimestamp) ? 0 : resolvedTimestamp;
+};
+
+const sortMessagesByTime = (messageList) =>
+  [...messageList].sort(
+    (firstMessage, secondMessage) =>
+      getTimestampValue(firstMessage.timestamp) - getTimestampValue(secondMessage.timestamp)
+  );
+
 const formatMessageTime = (timestamp) => {
   if (!timestamp) {
     return '';
@@ -166,10 +177,11 @@ const ChatWindow = ({
   onBack,
 }) => {
   const bottomOfMessagesRef = useRef(null);
+  const orderedMessages = sortMessagesByTime(messages);
 
   useEffect(() => {
     bottomOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [orderedMessages, selectedUser?.email]);
 
   if (!selectedUser) {
     return <EmptyConversationState theme={theme} />;
@@ -250,13 +262,13 @@ const ChatWindow = ({
               <div className="text-center py-10" style={{ color: theme.muted }}>
                 Loading messages...
               </div>
-            ) : messages.length === 0 ? (
+            ) : orderedMessages.length === 0 ? (
               <EmptyMessagesState theme={theme} />
             ) : (
               <>
-                {messages.map((message, index) => {
+                {orderedMessages.map((message, index) => {
                   const isOwnMessage = message.senderEmail === currentUserEmail;
-                  const previousMessage = messages[index - 1];
+                  const previousMessage = orderedMessages[index - 1];
                   const shouldShowDate =
                     index === 0 ||
                     new Date(message.timestamp).toDateString() !==

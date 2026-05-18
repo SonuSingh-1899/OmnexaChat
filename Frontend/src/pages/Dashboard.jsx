@@ -10,7 +10,16 @@ window.global = window;
 const MOBILE_BREAKPOINT = 640;
 
 const DASHBOARD_RESPONSIVE_STYLES = `
-  .dashboard-page { overflow: hidden; }
+  .dashboard-page {
+    overflow: hidden;
+    min-height: 100dvh;
+  }
+
+  .dashboard-layout,
+  .dashboard-chat-window,
+  .dashboard-chat-window > div {
+    min-height: 0;
+  }
 
   @media (max-width: 900px) {
     .dashboard-page { min-height: 100dvh; }
@@ -39,7 +48,10 @@ const DASHBOARD_RESPONSIVE_STYLES = `
   }
 
   @media (max-width: 640px) {
-    .dashboard-page { overflow: auto; }
+    .dashboard-page {
+      overflow: auto;
+      min-height: 100dvh;
+    }
     .dashboard-page--mobile-chat { height: 100dvh !important; }
     .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
     .dashboard-brand { gap: 8px !important; }
@@ -53,9 +65,14 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     .dashboard-logout-button, .mobile-menu-btn { padding: 6px !important; }
     .dashboard-layout { padding: 0 !important; gap: 0 !important; }
     .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
-      padding: 0 !important; gap: 0 !important; min-height: calc(100dvh - 94px);
+      padding: 0 !important;
+      gap: 0 !important;
+      min-height: calc(100dvh - 94px);
     }
     .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
+      min-height: 100dvh !important;
+    }
+    .dashboard-chat-window--mobile-page {
       min-height: 100dvh !important;
     }
     .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
@@ -184,6 +201,16 @@ const Dashboard = ({
     }
   }, [isCompactMobile]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-page-background', theme.pageBackground);
+    document.body.style.background = theme.pageBackground;
+
+    return () => {
+      document.documentElement.style.removeProperty('--app-page-background');
+      document.body.style.removeProperty('background');
+    };
+  }, [theme.pageBackground]);
+
   const layout = getLayoutState(isCompactMobile, selectedUser);
 
   return (
@@ -221,6 +248,7 @@ const Dashboard = ({
         className={`dashboard-layout flex-1 flex overflow-hidden min-h-0 ${
           layout.showMobileListPage ? 'dashboard-layout--mobile-list' : ''
         } ${layout.showMobileChatPage ? 'dashboard-layout--mobile-chat' : ''}`}
+        style={{ background: theme.pageBackground }}
       >
         {layout.showSidebar && (
           <ChatSidebar

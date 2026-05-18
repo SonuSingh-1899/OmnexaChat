@@ -5,11 +5,28 @@ import useWebSocket from './useWebSocket';
 const USER_REFRESH_INTERVAL = 20000;
 const SEARCH_DEBOUNCE_MS = 250;
 
+const getTimestampValue = (timestamp) => {
+  const resolvedTimestamp = new Date(timestamp).getTime();
+  return Number.isNaN(resolvedTimestamp) ? 0 : resolvedTimestamp;
+};
+
 const sortMessagesByTime = (messageList) =>
   [...messageList].sort(
     (firstMessage, secondMessage) =>
-      new Date(firstMessage.timestamp) - new Date(secondMessage.timestamp)
+      getTimestampValue(firstMessage.timestamp) - getTimestampValue(secondMessage.timestamp)
   );
+
+const sortUsersByRecentActivity = (userList) =>
+  [...userList].sort((firstUser, secondUser) => {
+    const timestampDifference =
+      getTimestampValue(secondUser.lastMessageTime) - getTimestampValue(firstUser.lastMessageTime);
+
+    if (timestampDifference !== 0) {
+      return timestampDifference;
+    }
+
+    return (firstUser.name || '').localeCompare(secondUser.name || '');
+  });
 
 const addMessageIfMissing = (messageList, incomingMessage) => {
   const messageAlreadyExists = messageList.some((message) => message.id === incomingMessage.id);
@@ -22,10 +39,12 @@ const addMessageIfMissing = (messageList, incomingMessage) => {
 };
 
 const updateUserPreview = (userList, email, content, timestamp) =>
-  userList.map((chatUser) =>
-    chatUser.email === email
-      ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
-      : chatUser
+  sortUsersByRecentActivity(
+    userList.map((chatUser) =>
+      chatUser.email === email
+        ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
+        : chatUser
+    )
   );
 
 const findUserByEmail = (email, ...userCollections) => {
@@ -66,7 +85,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
         profileApi.listIncomingRequests(),
       ]);
 
-      setConnectedUsers(nextConnectedUsers);
+      setConnectedUsers(sortUsersByRecentActivity(nextConnectedUsers));
       setIncomingRequests(nextIncomingRequests);
     } catch (error) {
       console.error('Failed to fetch connection data:', error);
@@ -201,7 +220,11 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     );
 
     setSelectedUser((currentSelectedUser) => {
-      if (currentSelectedUser?.email !== incomingMessage.senderEmail) {
+      const isActiveConversation =
+        currentSelectedUser?.email === incomingMessage.senderEmail ||
+        currentSelectedUser?.email === incomingMessage.receiverEmail;
+
+      if (!isActiveConversation) {
         return currentSelectedUser;
       }
 
@@ -296,7 +319,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
 
     setNewMessage('');
     setSendingMessage(true);
-    setMessages((currentMessages) => [...currentMessages, temporaryMessage]);
+    setMessages((currentMessages) => sortMessagesByTime([...currentMessages, temporaryMessage]));
     setConnectedUsers((currentUsers) =>
       updateUserPreview(currentUsers, selectedUser.email, content, sentAt)
     );
