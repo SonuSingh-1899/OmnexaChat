@@ -1,8 +1,17 @@
 package com.example.chat.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
 @Entity
@@ -24,6 +33,9 @@ public class ChatMessage {
     @Enumerated(EnumType.STRING)
     private MessageType type;
     
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    @JsonIgnore
     private LocalDateTime timestamp;
     private boolean isDeleted = false;
     private LocalDateTime deletedAt;
@@ -35,5 +47,35 @@ public class ChatMessage {
     @PrePersist
     protected void onCreate() {
         timestamp = LocalDateTime.now();
+    }
+
+    @JsonProperty("timestamp")
+    public String getTimestamp() {
+        if (timestamp == null) {
+            return null;
+        }
+
+        return timestamp.atZone(ZoneId.systemDefault()).toInstant().toString();
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    @JsonProperty("timestamp")
+    public void setTimestamp(String timestamp) {
+        if (timestamp == null || timestamp.isBlank()) {
+            this.timestamp = null;
+            return;
+        }
+
+        try {
+            this.timestamp = LocalDateTime.ofInstant(
+                java.time.Instant.parse(timestamp),
+                ZoneId.systemDefault()
+            );
+        } catch (DateTimeParseException ex) {
+            this.timestamp = LocalDateTime.parse(timestamp);
+        }
     }
 }

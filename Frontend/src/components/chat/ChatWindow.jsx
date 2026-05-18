@@ -268,7 +268,7 @@ const ChatWindow = ({
         <>
           <div
             ref={messagesContainerRef}
-            className="dashboard-messages flex-1 overflow-y-auto px-6 py-5"
+            className="dashboard-messages flex-1 overflow-y-auto px-3 py-5"
             style={{ background: theme.subtle, overscrollBehavior: 'contain' }}
           >
             {loading ? (
