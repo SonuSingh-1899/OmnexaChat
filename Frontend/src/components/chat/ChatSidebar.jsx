@@ -269,7 +269,7 @@ const ChatSidebar = ({
         )}
       </div>
 
-      <div className="p-3" style={{ borderTop: `1px solid ${theme.border}` }}>
+      {/* <div className="p-3" style={{ borderTop: `1px solid ${theme.border}` }}>
         <button
           type="button"
           onClick={onNavigateToSettings}
@@ -296,7 +296,7 @@ const ChatSidebar = ({
             </p>
           </div>
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

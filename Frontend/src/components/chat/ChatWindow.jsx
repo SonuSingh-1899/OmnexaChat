@@ -176,11 +176,20 @@ const ChatWindow = ({
   onAcceptRequest,
   onBack,
 }) => {
-  const bottomOfMessagesRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const orderedMessages = sortMessagesByTime(messages);
 
   useEffect(() => {
-    bottomOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const messagesContainer = messagesContainerRef.current;
+
+    if (!messagesContainer) {
+      return;
+    }
+
+    messagesContainer.scrollTo({
+      top: messagesContainer.scrollHeight,
+      behavior: 'smooth',
+    });
   }, [orderedMessages, selectedUser?.email]);
 
   if (!selectedUser) {
@@ -258,6 +267,7 @@ const ChatWindow = ({
       ) : (
         <>
           <div
+            ref={messagesContainerRef}
             className="dashboard-messages flex-1 overflow-y-auto px-6 py-5"
             style={{ background: theme.subtle, overscrollBehavior: 'contain' }}
           >
@@ -314,8 +324,6 @@ const ChatWindow = ({
                     </div>
                   );
                 })}
-
-                <div ref={bottomOfMessagesRef} />
               </>
             )}
           </div>

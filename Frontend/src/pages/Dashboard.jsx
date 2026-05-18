@@ -11,8 +11,14 @@ const MOBILE_BREAKPOINT = 640;
 
 const DASHBOARD_RESPONSIVE_STYLES = `
   .dashboard-page {
-    overflow: hidden;
+    height: var(--dashboard-app-height, 100vh);
     min-height: var(--dashboard-app-height, 100vh);
+    max-height: var(--dashboard-app-height, 100vh);
+    overflow: hidden;
+  }
+
+  .dashboard-page--mobile-chat {
+    overflow: hidden !important;
   }
 
   .dashboard-layout,
@@ -55,9 +61,13 @@ const DASHBOARD_RESPONSIVE_STYLES = `
       overflow: hidden !important;
     }
     .dashboard-page--mobile-chat {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
       height: var(--dashboard-app-height, 100vh) !important;
       min-height: var(--dashboard-app-height, 100vh) !important;
       max-height: var(--dashboard-app-height, 100vh) !important;
+      overflow: hidden !important;
     }
     .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
     .dashboard-brand { gap: 8px !important; }
@@ -78,15 +88,18 @@ const DASHBOARD_RESPONSIVE_STYLES = `
       max-height: 100% !important;
     }
     .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
+      flex: 1 1 auto !important;
       height: 100% !important;
       min-height: 0 !important;
       max-height: 100% !important;
+      overflow: hidden !important;
     }
     .dashboard-chat-window--mobile-page {
       height: 100% !important;
       min-height: 0 !important;
       max-height: 100% !important;
       flex: 1 1 auto !important;
+      overflow: hidden !important;
     }
     .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
       position: relative !important; left: auto !important; top: auto !important;
@@ -97,6 +110,7 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     .dashboard-chat-window--mobile-page > div {
       flex: 1 1 auto !important;
       min-height: 0 !important;
+      overflow: hidden !important;
     }
     .mobile-menu-btn { display: none !important; }
     .dashboard-chat-window { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
@@ -137,6 +151,13 @@ const DASHBOARD_RESPONSIVE_STYLES = `
       width: auto !important;
       flex: 1 1 auto !important;
       min-width: 0 !important;
+    }
+    .dashboard-messages {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
     }
     .sidebar--mobile-page > div:first-child { padding: 14px 12px 10px !important; }
     .sidebar--mobile-page > div:nth-child(2) { padding: 8px 8px 10px !important; }
@@ -234,12 +255,7 @@ const Dashboard = ({
       document.documentElement.style.setProperty('--dashboard-app-height', `${nextHeight}px`);
     };
 
-    const previousBodyOverflow = document.body.style.overflow;
-    const previousHtmlOverflow = document.documentElement.style.overflow;
-
     syncViewportHeight();
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
 
     window.addEventListener('resize', syncViewportHeight);
     window.addEventListener('orientationchange', syncViewportHeight);
@@ -252,16 +268,29 @@ const Dashboard = ({
       window.visualViewport?.removeEventListener('resize', syncViewportHeight);
       window.visualViewport?.removeEventListener('scroll', syncViewportHeight);
       document.documentElement.style.removeProperty('--dashboard-app-height');
-      document.body.style.overflow = previousBodyOverflow;
-      document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, []);
 
   const layout = getLayoutState(isCompactMobile, selectedUser);
 
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
   return (
     <div
       className={`dashboard-page flex flex-col overflow-hidden ${
+        layout.showMobileListPage ? 'dashboard-page--mobile-list' : ''
+      } ${
         layout.showMobileChatPage ? 'dashboard-page--mobile-chat' : ''
       }`}
       style={{

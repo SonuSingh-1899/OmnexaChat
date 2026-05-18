@@ -8,15 +8,20 @@ const Settings = ({
   onNavigateToChangePassword,
 }) => {
   return (
-    <div className="settings-page min-h-screen" style={{
-      background: theme.pageBackground,
-      fontFamily: "'DM Sans', sans-serif",
-      color: theme.text,
-    }}>
-      <div className="settings-header flex items-center justify-between p-4 md:p-6 border-b" style={{
-        background: theme.surface,
-        borderBottomColor: theme.border,
-      }}>
+    <div
+      className="settings-page min-h-screen"
+      style={{
+        background: theme.pageBackground,
+        fontFamily: "'DM Sans', sans-serif",
+        color: theme.text,
+      }}
+    >
+      <div
+        className="settings-header flex items-center justify-between px-4 py-4 md:px-8 md:py-6"
+        style={{
+          background: theme.pageBackground,
+        }}
+      >
         <button
           onClick={onNavigateToDashboard}
           className="bg-none border-none cursor-pointer flex items-center gap-2 text-sm"
@@ -25,7 +30,7 @@ const Settings = ({
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          Back to Chat
+          <span className="hidden md:inline">Back to Chat</span>
         </button>
         <h1 className="font-serif text-xl md:text-2xl font-normal m-0 flex-1 text-center md:flex-none">
           Settings
@@ -33,20 +38,16 @@ const Settings = ({
         <div className="w-17.5 md:w-27.5" />
       </div>
 
-      <div className="settings-content max-w-225 mx-auto p-6 md:p-8 space-y-6">
-        <section className="rounded-2xl p-6" style={{
-          background: theme.surface,
-          border: `1px solid ${theme.border}`,
-          boxShadow: `0 16px 40px ${theme.shadow}`,
-        }}>
-          <h2 className="font-serif text-2xl font-normal mb-2 m-0">
+      <div className="settings-content w-full px-4 pb-8 md:px-8 md:pb-12">
+        <section className="py-4 md:py-6">
+          <h2 className="font-serif text-2xl md:text-3xl font-normal mb-2 m-0">
             Theme
           </h2>
-          <p className="text-sm mb-5" style={{ color: theme.muted }}>
+          <p className="text-sm mb-5 md:mb-6 max-w-2xl" style={{ color: theme.muted }}>
             Choose one of the 3 logo-inspired black and neutral themes for your chat app.
           </p>
 
-          <div className="settings-theme-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="settings-theme-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
             {Object.entries(themeOptions).map(([themeKey, option]) => {
               const isActive = currentThemeKey === themeKey;
 
@@ -55,11 +56,11 @@ const Settings = ({
                   key={themeKey}
                   type="button"
                   onClick={() => onThemeChange(themeKey)}
-                  className="p-4.5 rounded-2xl cursor-pointer text-left"
+                  className="p-5 rounded-2xl cursor-pointer text-left transition-all"
                   style={{
-                    border: `2px solid ${isActive ? option.accent : option.border}`,
+                    border: `1px solid ${isActive ? option.accent : theme.border}`,
                     background: option.surface,
-                    boxShadow: isActive ? `0 12px 24px ${option.shadow}` : 'none',
+                    boxShadow: isActive ? `0 12px 24px ${option.shadow}` : `0 4px 14px ${theme.shadow}`,
                   }}
                 >
                   <div className="flex gap-2.5 mb-3.5">
@@ -77,15 +78,16 @@ const Settings = ({
           </div>
         </section>
 
-        <section className="rounded-2xl p-6" style={{
-          background: theme.surface,
-          border: `1px solid ${theme.border}`,
-          boxShadow: `0 16px 40px ${theme.shadow}`,
-        }}>
-          <h2 className="font-serif text-2xl font-normal mb-2 m-0">
+        <section
+          className="py-6"
+          style={{
+            borderTop: `1px solid ${theme.border}`,
+          }}
+        >
+          <h2 className="font-serif text-2xl md:text-3xl font-normal mb-2 m-0">
             Security
           </h2>
-          <p className="text-sm mb-4" style={{ color: theme.muted }}>
+          <p className="text-sm mb-4 md:mb-5 max-w-2xl" style={{ color: theme.muted }}>
             you can change your password using your current password.
           </p>
 
