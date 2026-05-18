@@ -12,7 +12,7 @@ const MOBILE_BREAKPOINT = 640;
 const DASHBOARD_RESPONSIVE_STYLES = `
   .dashboard-page {
     overflow: hidden;
-    min-height: 100vh;
+    min-height: var(--dashboard-app-height, 100vh);
   }
 
   .dashboard-layout,
@@ -49,15 +49,15 @@ const DASHBOARD_RESPONSIVE_STYLES = `
 
   @media (max-width: 640px) {
     .dashboard-page {
-      height: 100svh !important;
-      min-height: 100svh !important;
-      max-height: 100svh !important;
+      height: var(--dashboard-app-height, 100vh) !important;
+      min-height: var(--dashboard-app-height, 100vh) !important;
+      max-height: var(--dashboard-app-height, 100vh) !important;
       overflow: hidden !important;
     }
     .dashboard-page--mobile-chat {
-      height: 100svh !important;
-      min-height: 100svh !important;
-      max-height: 100svh !important;
+      height: var(--dashboard-app-height, 100vh) !important;
+      min-height: var(--dashboard-app-height, 100vh) !important;
+      max-height: var(--dashboard-app-height, 100vh) !important;
     }
     .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
     .dashboard-brand { gap: 8px !important; }
@@ -227,6 +227,35 @@ const Dashboard = ({
       document.body.style.removeProperty('background');
     };
   }, [theme.pageBackground]);
+
+  useEffect(() => {
+    const syncViewportHeight = () => {
+      const nextHeight = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--dashboard-app-height', `${nextHeight}px`);
+    };
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    syncViewportHeight();
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    window.addEventListener('resize', syncViewportHeight);
+    window.addEventListener('orientationchange', syncViewportHeight);
+    window.visualViewport?.addEventListener('resize', syncViewportHeight);
+    window.visualViewport?.addEventListener('scroll', syncViewportHeight);
+
+    return () => {
+      window.removeEventListener('resize', syncViewportHeight);
+      window.removeEventListener('orientationchange', syncViewportHeight);
+      window.visualViewport?.removeEventListener('resize', syncViewportHeight);
+      window.visualViewport?.removeEventListener('scroll', syncViewportHeight);
+      document.documentElement.style.removeProperty('--dashboard-app-height');
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
 
   const layout = getLayoutState(isCompactMobile, selectedUser);
 
