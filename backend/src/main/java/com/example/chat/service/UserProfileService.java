@@ -9,7 +9,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -30,6 +33,7 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class UserProfileService {
+    private static final Logger log = LoggerFactory.getLogger(UserProfileService.class);
     private static final String RESET_OTP_PREFIX = "reset-otp:";
     private static final String RESET_RATE_LIMIT_PREFIX = "reset-ratelimit:";
     private static final int RESET_OTP_EXPIRY_MINUTES = 10;
@@ -111,23 +115,45 @@ public class UserProfileService {
             .orElseThrow(() -> new BusinessException("User not found with this email"));
 
         String rateLimitKey = RESET_RATE_LIMIT_PREFIX + email;
-        if (Boolean.TRUE.equals(redisTemplate.hasKey(rateLimitKey))) {
-            throw new BusinessException("Please wait 60 seconds before requesting another OTP");
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(rateLimitKey))) {
+                throw new BusinessException("Please wait 60 seconds before requesting another OTP");
+            }
+        } catch (RedisConnectionFailureException ex) {
+            log.error("Redis unavailable during password reset rate-limit check", ex);
+            throw new BusinessException("Password reset service is temporarily unavailable. Please try again shortly.");
         }
 
         String otp = String.format("%06d", new Random().nextInt(999999));
-        redisTemplate.opsForValue().set(
-            RESET_OTP_PREFIX + email,
-            otp,
-            Duration.ofMinutes(RESET_OTP_EXPIRY_MINUTES)
-        );
-        redisTemplate.opsForValue().set(
-            rateLimitKey,
-            "1",
-            Duration.ofSeconds(RESET_RATE_LIMIT_SECONDS)
-        );
+        try {
+            redisTemplate.opsForValue().set(
+                RESET_OTP_PREFIX + email,
+                otp,
+                Duration.ofMinutes(RESET_OTP_EXPIRY_MINUTES)
+            );
+            redisTemplate.opsForValue().set(
+                rateLimitKey,
+                "1",
+                Duration.ofSeconds(RESET_RATE_LIMIT_SECONDS)
+            );
+        } catch (RedisConnectionFailureException ex) {
+            log.error("Redis unavailable while storing password reset OTP", ex);
+            throw new BusinessException("Password reset service is temporarily unavailable. Please try again shortly.");
+        }
 
-        emailService.sendPasswordResetOtp(email, otp);
+        try {
+            emailService.sendPasswordResetOtp(email, otp);
+        } catch (Exception ex) {
+            log.error("Failed to send password reset OTP email", ex);
+            try {
+                redisTemplate.delete(RESET_OTP_PREFIX + email);
+                redisTemplate.delete(rateLimitKey);
+            } catch (RedisConnectionFailureException cleanupEx) {
+                log.warn("Failed to clean password reset OTP keys after mail failure", cleanupEx);
+            }
+            throw new BusinessException("Failed to send password reset OTP email. Please check the mail configuration.");
+        }
+
         return "Password reset OTP sent to your email";
     }
 

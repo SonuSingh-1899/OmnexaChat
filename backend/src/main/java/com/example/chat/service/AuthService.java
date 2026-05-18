@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.mail.MailException;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,7 +72,7 @@ public class AuthService {
 
         try {
             emailService.sendOtp(email, otp);
-        } catch (MailException ex) {
+        } catch (Exception ex) {
             log.error("Failed to send OTP email", ex);
             try {
                 redisTemplate.delete(OTP_PREFIX + email);
