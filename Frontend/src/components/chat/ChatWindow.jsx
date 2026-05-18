@@ -257,7 +257,10 @@ const ChatWindow = ({
         />
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto px-6 py-5" style={{ background: theme.subtle }}>
+          <div
+            className="dashboard-messages flex-1 overflow-y-auto px-6 py-5"
+            style={{ background: theme.subtle, overscrollBehavior: 'contain' }}
+          >
             {loading ? (
               <div className="text-center py-10" style={{ color: theme.muted }}>
                 Loading messages...

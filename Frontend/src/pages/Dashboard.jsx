@@ -12,7 +12,7 @@ const MOBILE_BREAKPOINT = 640;
 const DASHBOARD_RESPONSIVE_STYLES = `
   .dashboard-page {
     overflow: hidden;
-    min-height: 100dvh;
+    min-height: 100vh;
   }
 
   .dashboard-layout,
@@ -49,10 +49,16 @@ const DASHBOARD_RESPONSIVE_STYLES = `
 
   @media (max-width: 640px) {
     .dashboard-page {
-      overflow: auto;
-      min-height: 100dvh;
+      height: 100svh !important;
+      min-height: 100svh !important;
+      max-height: 100svh !important;
+      overflow: hidden !important;
     }
-    .dashboard-page--mobile-chat { height: 100dvh !important; }
+    .dashboard-page--mobile-chat {
+      height: 100svh !important;
+      min-height: 100svh !important;
+      max-height: 100svh !important;
+    }
     .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
     .dashboard-brand { gap: 8px !important; }
     .dashboard-brand-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; font-size: 13px !important; }
@@ -67,19 +73,30 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
       padding: 0 !important;
       gap: 0 !important;
-      min-height: calc(100dvh - 94px);
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
     }
     .dashboard-page--mobile-chat .dashboard-layout--mobile-chat {
-      min-height: 100dvh !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
     }
     .dashboard-chat-window--mobile-page {
-      min-height: 100dvh !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      max-height: 100% !important;
+      flex: 1 1 auto !important;
     }
     .sidebar--mobile-page, .dashboard-chat-window--mobile-page {
       position: relative !important; left: auto !important; top: auto !important;
       bottom: auto !important; transform: none !important; z-index: auto !important;
-      width: 100% !important; max-width: 100% !important; min-height: 100%;
+      width: 100% !important; max-width: 100% !important; min-height: 0 !important;
       border-radius: 0 !important; border: none !important; box-shadow: none !important;
+    }
+    .dashboard-chat-window--mobile-page > div {
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
     }
     .mobile-menu-btn { display: none !important; }
     .dashboard-chat-window { border-radius: 0 !important; border: none !important; box-shadow: none !important; }
@@ -107,7 +124,7 @@ const DASHBOARD_RESPONSIVE_STYLES = `
       flex-direction: row !important;
       align-items: center !important;
       gap: 10px !important;
-      padding: 10px 12px max(10px, env(safe-area-inset-bottom)) !important;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
     }
     .dashboard-send-button {
       width: 44px !important;
@@ -215,7 +232,7 @@ const Dashboard = ({
 
   return (
     <div
-      className={`dashboard-page h-screen flex flex-col overflow-hidden ${
+      className={`dashboard-page flex flex-col overflow-hidden ${
         layout.showMobileChatPage ? 'dashboard-page--mobile-chat' : ''
       }`}
       style={{
