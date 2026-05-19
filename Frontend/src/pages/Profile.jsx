@@ -1,8 +1,18 @@
 // pages/Profile.jsx
 import { useState, useEffect } from 'react';
+import MobileTopBar from '../components/layout/MobileTopBar';
 import { profileApi } from '../lib/api';
 
-const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
+const Profile = ({
+  theme,
+  user,
+  isCompactMobile,
+  notificationCount,
+  onOpenNotifications,
+  onUserUpdated,
+  onLogout,
+  onNavigateToDashboard,
+}) => {
   const [formData, setFormData] = useState({
     name: '',
     bio: '',
@@ -144,8 +154,19 @@ const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-100 to-stone-200">
-      <div className="bg-white/80 backdrop-blur-sm border-b border-stone-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+    <div
+      className="min-h-screen bg-white"
+      style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}
+    >
+      {isCompactMobile && (
+        <MobileTopBar
+          theme={theme}
+          notificationCount={notificationCount}
+          onOpenNotifications={onOpenNotifications}
+        />
+      )}
+
+      {/* <div className={`bg-white/80 backdrop-blur-sm border-b border-stone-200 px-6 py-4 items-center justify-between sticky top-0 z-10 ${isCompactMobile ? 'hidden md:flex' : 'flex'}`}>
         <button
           onClick={onNavigateToDashboard}
           className="flex items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
@@ -159,11 +180,11 @@ const Profile = ({ user, onUserUpdated, onLogout, onNavigateToDashboard }) => {
           Profile
         </h1>
         <div className="w-20" />
-      </div>
+      </div> */}
 
       <div className="max-w-lg mx-auto px-6 py-8">
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-stone-800 to-stone-700 flex items-center justify-center text-white text-4xl font-medium shadow-lg">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-linear-to-br from-stone-800 to-stone-700 flex items-center justify-center text-white text-4xl font-medium shadow-lg">
             {formData.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
           <p className="text-sm text-stone-500">

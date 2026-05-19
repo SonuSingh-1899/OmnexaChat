@@ -12,6 +12,7 @@ export const ROUTES = {
   signup: '/signup',
   otp: '/verify-otp',
   dashboard: '/dashboard',
+  stories: '/stories',
   profile: '/profile',
   settings: '/settings',
   changePassword: '/change-password',
@@ -31,6 +32,7 @@ export const PUBLIC_ROUTES = new Set([
 export const KNOWN_ROUTES = new Set(Object.values(ROUTES));
 
 export const PENDING_SIGNUP_KEY = 'pendingSignup';
+export const PENDING_CHAT_USER_KEY = 'pendingChatUser';
 
 export const getCurrentPath = () => window.location.pathname || '/';
 

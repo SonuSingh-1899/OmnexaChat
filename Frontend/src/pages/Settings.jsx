@@ -1,6 +1,11 @@
 // pages/Settings.jsx
+import MobileTopBar from '../components/layout/MobileTopBar';
+
 const Settings = ({
   theme,
+  isCompactMobile,
+  notificationCount,
+  onOpenNotifications,
   currentThemeKey,
   themeOptions,
   onThemeChange,
@@ -14,10 +19,19 @@ const Settings = ({
         background: theme.pageBackground,
         fontFamily: "'DM Sans', sans-serif",
         color: theme.text,
+        paddingBottom: isCompactMobile ? '96px' : undefined,
       }}
     >
+      {isCompactMobile && (
+        <MobileTopBar
+          theme={theme}
+          notificationCount={notificationCount}
+          onOpenNotifications={onOpenNotifications}
+        />
+      )}
+
       <div
-        className="settings-header flex items-center justify-between px-4 py-4 md:px-8 md:py-6"
+        className={`settings-header items-center justify-between px-4 py-4 md:px-8 md:py-6 ${isCompactMobile ? 'hidden md:flex' : 'flex'}`}
         style={{
           background: theme.pageBackground,
         }}

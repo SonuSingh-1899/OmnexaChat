@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ChatNavbar from '../components/chat/ChatNavbar';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatWindow from '../components/chat/ChatWindow';
+import MobileBottomBar from '../components/layout/MobileBottomBar';
 import useChat from '../hooks/useChat';
 import { getTheme } from '../theme/themeOptions';
 
@@ -21,6 +22,20 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     overflow: hidden !important;
   }
 
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
   .dashboard-layout,
   .dashboard-chat-window,
   .dashboard-chat-window > div {
@@ -32,12 +47,11 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     .dashboard-navbar {
       display: grid !important;
       grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas: "brand actions" "search search";
+      grid-template-areas: "brand actions";
       align-items: center !important;
       padding: 14px 16px !important;
     }
     .dashboard-brand { grid-area: brand; min-width: 0; flex: initial !important; }
-    .dashboard-search { grid-area: search; flex: initial !important; max-width: 100% !important; width: 100%; }
     .dashboard-actions { grid-area: actions; margin-left: 0; justify-self: end; }
     .dashboard-layout { padding: 14px !important; }
     .sidebar {
@@ -71,14 +85,8 @@ const DASHBOARD_RESPONSIVE_STYLES = `
     }
     .dashboard-navbar { gap: 12px !important; padding: 12px 12px 14px !important; grid-template-columns: minmax(0, 1fr) auto; }
     .dashboard-brand { gap: 8px !important; }
-    .dashboard-brand-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; font-size: 13px !important; }
-    .dashboard-brand-copy h1 { font-size: 18px !important; line-height: 1.1; }
-    .dashboard-brand-copy p { display: none; }
-    .dashboard-search { padding: 10px 12px !important; gap: 8px !important; }
-    .dashboard-search-input { font-size: 13px !important; }
     .dashboard-actions { gap: 4px !important; }
-    .dashboard-profile-button { width: 34px !important; height: 34px !important; font-size: 12px !important; }
-    .dashboard-logout-button, .mobile-menu-btn { padding: 6px !important; }
+    .dashboard-notification-button, .mobile-menu-btn { width: 38px !important; height: 38px !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; }
     .dashboard-layout { padding: 0 !important; gap: 0 !important; }
     .dashboard-layout--mobile-list, .dashboard-layout--mobile-chat {
       padding: 0 !important;
@@ -159,7 +167,7 @@ const DASHBOARD_RESPONSIVE_STYLES = `
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
     }
-    .sidebar--mobile-page > div:first-child { padding: 14px 12px 10px !important; }
+    .sidebar--mobile-page > div:first-child { padding: 0px !important; }
     .sidebar--mobile-page > div:nth-child(2) { padding: 8px 8px 10px !important; }
   }
 `;
@@ -179,24 +187,36 @@ const getLayoutState = (isCompactMobile, selectedUser) => {
   };
 };
 
-const chatWindowStyle = (theme, isCompactMobile) => ({
+const chatWindowStyle = (theme) => ({
   background: theme.surface,
   border: `1px solid ${theme.border}`,
   boxShadow: `0 18px 42px ${theme.shadow}`,
   overflow: 'hidden',
-  ...(isCompactMobile ? {} : {}),
 });
 
 const Dashboard = ({
   theme = getTheme(),
   user,
+  pendingChatUser,
+  onPendingChatUserHandled,
+  notificationCount = 0,
+  onOpenNotifications,
   onNavigateToProfile,
+  onNavigateToStories,
   onNavigateToSettings,
   onRefreshCurrentUser,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMobile, setIsCompactMobile] = useState(getCurrentCompactMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
+  
+  // ✅ Move handleMobileSearch outside useEffect - FIXED
+  const handleMobileSearch = (query) => {
+    setMobileSearchQuery(query);
+  };
+  
+  const effectiveSearchQuery = isCompactMobile ? mobileSearchQuery : searchQuery;
 
   const {
     users,
@@ -217,7 +237,7 @@ const Dashboard = ({
     acceptFollowRequest,
   } = useChat({
     user,
-    searchQuery,
+    searchQuery: effectiveSearchQuery,
     onConnectionChange: onRefreshCurrentUser,
   });
 
@@ -238,6 +258,16 @@ const Dashboard = ({
       setIsSidebarOpen(false);
     }
   }, [isCompactMobile]);
+
+  useEffect(() => {
+    if (!pendingChatUser?.email || !pendingChatUser.isConnected) {
+      return;
+    }
+
+    void selectUser(pendingChatUser).finally(() => {
+      onPendingChatUserHandled?.();
+    });
+  }, [onPendingChatUserHandled, pendingChatUser, selectUser]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--app-page-background', theme.pageBackground);
@@ -304,11 +334,15 @@ const Dashboard = ({
           theme={theme}
           user={user}
           searchQuery={searchQuery}
-          showSearch={layout.showMobileListPage || !isCompactMobile}
+          showSearch={!isCompactMobile}
           onSearchChange={setSearchQuery}
+          notificationCount={notificationCount}
+          isCompactMobile={isCompactMobile}
+          onOpenNotifications={onOpenNotifications}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToSettings={onNavigateToSettings}
           onOpenSidebar={() => setIsSidebarOpen(true)}
+          onMobileSearch={handleMobileSearch}  // ✅ Now defined and working
         />
       )}
 
@@ -356,7 +390,7 @@ const Dashboard = ({
             className={`dashboard-chat-window flex-1 min-h-0 overflow-hidden flex flex-col ${
               isCompactMobile ? 'dashboard-chat-window--mobile-page' : ''
             }`}
-            style={chatWindowStyle(theme, isCompactMobile)}
+            style={chatWindowStyle(theme)}
           >
             <ChatWindow
               theme={theme}
@@ -381,6 +415,33 @@ const Dashboard = ({
           </div>
         )}
       </div>
+
+      {layout.showMobileListPage && (
+        <MobileBottomBar
+          theme={theme}
+          currentRoute="/dashboard"
+          onNavigate={(route) => {
+            if (route === '/dashboard') {
+              return;
+            }
+
+            if (route === '/profile') {
+              onNavigateToProfile();
+              return;
+            }
+
+            if (route === '/settings') {
+              onNavigateToSettings();
+              return;
+            }
+
+            if (route === '/stories') {
+              onNavigateToStories();
+              return;
+            }
+          }}
+        />
+      )}
 
       <style>{DASHBOARD_RESPONSIVE_STYLES}</style>
     </div>

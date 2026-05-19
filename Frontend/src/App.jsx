@@ -3,11 +3,15 @@ import './App.css';
 import ChangePassword from './components/ChangePassword';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import MobileBottomBar from './components/layout/MobileBottomBar';
+import NotificationPanel from './components/layout/NotificationPanel';
+import useNotifications from './hooks/useNotifications';
 import usePresence from './hooks/usePresence';
 import { FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import Stories from './pages/Stories';
 import Settings from './pages/Settings';
 import Signup from './pages/Signup';
 import VerifyOtp from './pages/VerifyOtp';
@@ -15,11 +19,14 @@ import {
   getCurrentPath,
   KNOWN_ROUTES,
   navigateToPath,
+  PENDING_CHAT_USER_KEY,
   PENDING_SIGNUP_KEY,
   PUBLIC_ROUTES,
   ROUTES,
 } from './routes/appRoutes';
 import { DEFAULT_THEME_KEY, getTheme, THEME_OPTIONS, UI_THEME_KEY } from './theme/themeOptions';
+
+const MOBILE_BREAKPOINT = 640;
 
 const readStoredJson = (storage, key) => {
   try {
@@ -92,6 +99,9 @@ const getRedirectForLoggedInUser = (pathname) => {
 const App = () => {
   const [pathname, setPathname] = useState(getCurrentPath);
   const [isLoading, setIsLoading] = useState(() => Boolean(session.getToken()));
+  const [isCompactMobile, setIsCompactMobile] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= MOBILE_BREAKPOINT
+  );
   const [currentUser, setCurrentUser] = useState(null);
   const [authNotice, setAuthNotice] = useState('');
   const [pendingSignup, setPendingSignup] = useState(() =>
@@ -100,8 +110,13 @@ const App = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState(() =>
     readStoredText(sessionStorage, FORGOT_PASSWORD_EMAIL_KEY)
   );
-  const [themeKey, setThemeKey] = useState(() =>
-    localStorage.getItem(UI_THEME_KEY) || DEFAULT_THEME_KEY
+  const [themeKey, setThemeKey] = useState(
+    () => localStorage.getItem(UI_THEME_KEY) || DEFAULT_THEME_KEY
+  );
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notificationActionUserId, setNotificationActionUserId] = useState(null);
+  const [pendingChatUser, setPendingChatUser] = useState(() =>
+    readStoredJson(sessionStorage, PENDING_CHAT_USER_KEY)
   );
 
   const currentTheme = getTheme(themeKey);
@@ -117,6 +132,18 @@ const App = () => {
     setCurrentUser(userProfile);
     return userProfile;
   }, []);
+
+  const {
+    notifications,
+    unreadCount,
+    pendingIncomingRequestIds,
+    markAllAsRead,
+    dismissNotification,
+    acceptRequestFromNotification,
+  } = useNotifications({
+    user: currentUser,
+    onConnectionChange: loadCurrentUser,
+  });
 
   const restoreSession = useCallback(async () => {
     try {
@@ -149,8 +176,24 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    const handleResize = () => {
+      setIsCompactMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
     saveOrRemoveJson(sessionStorage, PENDING_SIGNUP_KEY, pendingSignup);
   }, [pendingSignup]);
+
+  useEffect(() => {
+    saveOrRemoveJson(sessionStorage, PENDING_CHAT_USER_KEY, pendingChatUser);
+  }, [pendingChatUser]);
 
   useEffect(() => {
     saveOrRemoveText(sessionStorage, FORGOT_PASSWORD_EMAIL_KEY, forgotPasswordEmail);
@@ -237,6 +280,56 @@ const App = () => {
     setAuthNotice('Account created! Please login to your account');
     navigateTo(ROUTES.login, { replace: true });
   };
+
+  const handleOpenNotifications = () => {
+    markAllAsRead();
+    setIsNotificationsOpen(true);
+  };
+
+  const handleCloseNotifications = () => {
+    setIsNotificationsOpen(false);
+  };
+
+  const handleAcceptNotificationRequest = async (userId) => {
+    if (notificationActionUserId) {
+      return;
+    }
+
+    setNotificationActionUserId(userId);
+
+    try {
+      await acceptRequestFromNotification(userId);
+      await loadCurrentUser();
+    } catch (error) {
+      console.error('Failed to accept request from notifications:', error);
+    } finally {
+      setNotificationActionUserId(null);
+    }
+  };
+
+  const notificationPanel = currentUser ? (
+    <NotificationPanel
+      theme={currentTheme}
+      isOpen={isNotificationsOpen}
+      notifications={notifications}
+      pendingIncomingRequestIds={pendingIncomingRequestIds}
+      actionUserId={notificationActionUserId}
+      onClose={handleCloseNotifications}
+      onAcceptRequest={handleAcceptNotificationRequest}
+      onDismissNotification={dismissNotification}
+    />
+  ) : null;
+
+  const globalMobileBottomBar =
+    isCompactMobile &&
+    currentUser &&
+    [ROUTES.profile, ROUTES.settings, ROUTES.stories].includes(pathname) ? (
+      <MobileBottomBar
+        theme={currentTheme}
+        currentRoute={pathname}
+        onNavigate={(route) => navigateTo(route)}
+      />
+    ) : null;
 
   if (isLoading) {
     return (
@@ -326,37 +419,104 @@ const App = () => {
 
   if (pathname === ROUTES.dashboard && currentUser) {
     return (
-      <Dashboard
-        theme={currentTheme}
-        user={currentUser}
-        onNavigateToProfile={() => navigateTo(ROUTES.profile)}
-        onNavigateToSettings={() => navigateTo(ROUTES.settings)}
-        onRefreshCurrentUser={loadCurrentUser}
-      />
+      <>
+        <Dashboard
+          theme={currentTheme}
+          user={currentUser}
+          pendingChatUser={pendingChatUser}
+          onPendingChatUserHandled={() => setPendingChatUser(null)}
+          notificationCount={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
+          onNavigateToProfile={() => navigateTo(ROUTES.profile)}
+          onNavigateToStories={() => navigateTo(ROUTES.stories)}
+          onNavigateToSettings={() => navigateTo(ROUTES.settings)}
+          onRefreshCurrentUser={loadCurrentUser}
+        />
+        {notificationPanel}
+      </>
+    );
+  }
+
+  
+  if (pathname === ROUTES.search && currentUser) {
+    return (
+      <>
+        <Search
+          theme={currentTheme}
+          user={currentUser}
+          isCompactMobile={isCompactMobile}
+          notificationCount={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
+          onRefreshCurrentUser={loadCurrentUser}
+          onOpenChatUser={(chatUser) => {
+            setPendingChatUser(chatUser);
+            navigateTo(ROUTES.dashboard);
+          }}
+          onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
+        />
+        {notificationPanel}
+        {globalMobileBottomBar}
+      </>
+    );
+  }
+
+  if (pathname === ROUTES.stories && currentUser) {
+    return (
+      <>
+        <Stories
+          theme={currentTheme}
+          isCompactMobile={isCompactMobile}
+          notificationCount={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
+          onRefreshCurrentUser={loadCurrentUser}
+          onOpenChatUser={(chatUser) => {
+            setPendingChatUser(chatUser);
+            navigateTo(ROUTES.dashboard);
+          }}
+          onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
+        />
+        {notificationPanel}
+        {globalMobileBottomBar}
+      </>
     );
   }
 
   if (pathname === ROUTES.profile && currentUser) {
     return (
-      <Profile
-        user={currentUser}
-        onUserUpdated={setCurrentUser}
-        onLogout={handleLogout}
-        onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
-      />
+      <>
+        <Profile
+          theme={currentTheme}
+          user={currentUser}
+          isCompactMobile={isCompactMobile}
+          notificationCount={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
+          onUserUpdated={setCurrentUser}
+          onLogout={handleLogout}
+          onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
+        />
+        {notificationPanel}
+        {globalMobileBottomBar}
+      </>
     );
   }
 
   if (pathname === ROUTES.settings && currentUser) {
     return (
-      <Settings
-        theme={currentTheme}
-        currentThemeKey={themeKey}
-        themeOptions={THEME_OPTIONS}
-        onThemeChange={setThemeKey}
-        onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
-        onNavigateToChangePassword={() => navigateTo(ROUTES.changePassword)}
-      />
+      <>
+        <Settings
+          theme={currentTheme}
+          isCompactMobile={isCompactMobile}
+          notificationCount={unreadCount}
+          onOpenNotifications={handleOpenNotifications}
+          currentThemeKey={themeKey}
+          themeOptions={THEME_OPTIONS}
+          onThemeChange={setThemeKey}
+          onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
+          onNavigateToChangePassword={() => navigateTo(ROUTES.changePassword)}
+        />
+        {notificationPanel}
+        {globalMobileBottomBar}
+      </>
     );
   }
 
