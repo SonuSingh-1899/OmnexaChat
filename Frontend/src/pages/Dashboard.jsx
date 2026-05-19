@@ -400,6 +400,12 @@ const Dashboard = ({
               loading={loading}
               sending={sending}
               currentUserEmail={user?.email}
+              onNavigateToDashboard={() => {
+                // Your navigation logic
+                window.location.href = '/dashboard'; // or use router
+                // If using React Router:
+                // navigate('/dashboard');
+              }}
               actionUserId={actionUserId}
               isCompactMobile={isCompactMobile}
               onNewMessageChange={setNewMessage}
