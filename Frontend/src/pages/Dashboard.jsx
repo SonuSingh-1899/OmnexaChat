@@ -342,7 +342,7 @@ const Dashboard = ({
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToSettings={onNavigateToSettings}
           onOpenSidebar={() => setIsSidebarOpen(true)}
-          onMobileSearch={handleMobileSearch}  // ✅ Now defined and working
+          onMobileSearch={handleMobileSearch}
         />
       )}
 
@@ -401,10 +401,7 @@ const Dashboard = ({
               sending={sending}
               currentUserEmail={user?.email}
               onNavigateToDashboard={() => {
-                // Your navigation logic
-                window.location.href = '/dashboard'; // or use router
-                // If using React Router:
-                // navigate('/dashboard');
+                window.location.href = '/dashboard';
               }}
               actionUserId={actionUserId}
               isCompactMobile={isCompactMobile}

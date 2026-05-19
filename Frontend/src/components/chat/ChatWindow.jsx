@@ -314,7 +314,7 @@ const ChatWindow = ({
                             {message.content}
                           </p>
                           <p className="mt-1 text-[10px] opacity-70 text-right">
-                            {message.isTemp ? 'Sending...' : formatMessageTime(message.timestamp)}
+                            {message.isTemp ? 'Sending...' : new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {message.error && <span className="ml-2 text-red-500">Failed</span>}
                           </p>
                         </div>

@@ -297,11 +297,11 @@ const ChatSidebar = ({
               </div>
             )}
 
-            {shouldShowConnectedEmptyState && (
+            {/* {shouldShowConnectedEmptyState && (
               <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
                 No connected users yet. Search someone above and send a request.
               </p>
-            )}
+            )} */}
 
             {shouldShowSearchEmptyState && !isCompactMobile && (
               <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
