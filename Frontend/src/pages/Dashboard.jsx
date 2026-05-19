@@ -210,13 +210,21 @@ const Dashboard = ({
   const [isCompactMobile, setIsCompactMobile] = useState(getCurrentCompactMode);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
-  
-  // ✅ Move handleMobileSearch outside useEffect - FIXED
+  const [isMobileSearchExpanded, setIsMobileSearchExpanded] = useState(false);
+
+  const handleToggleMobileSearch = () => {
+    setIsMobileSearchExpanded((prev) => {
+      if (prev) setMobileSearchQuery('');
+      return !prev;
+    });
+  };
+
   const handleMobileSearch = (query) => {
     setMobileSearchQuery(query);
   };
-  
-  const effectiveSearchQuery = isCompactMobile ? mobileSearchQuery : searchQuery;
+
+  // Mobile pe mobileSearchQuery use hoga, desktop pe searchQuery
+  const effectiveSearchQuery = String(isCompactMobile ? mobileSearchQuery : searchQuery);
 
   const {
     users,
@@ -343,6 +351,8 @@ const Dashboard = ({
           onNavigateToSettings={onNavigateToSettings}
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onMobileSearch={handleMobileSearch}
+          isMobileSearchExpanded={isMobileSearchExpanded}
+          onToggleMobileSearch={handleToggleMobileSearch}
         />
       )}
 
@@ -366,7 +376,7 @@ const Dashboard = ({
             incomingRequests={incomingRequests}
             searchResults={searchResults}
             selectedUser={selectedUser}
-            searchQuery={searchQuery}
+            searchQuery={effectiveSearchQuery}
             isSearching={searchingUsers}
             actionUserId={actionUserId}
             isCompactMobile={isCompactMobile}

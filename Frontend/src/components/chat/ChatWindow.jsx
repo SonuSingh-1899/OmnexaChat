@@ -219,7 +219,7 @@ const ChatWindow = ({
       >
       <button
         onClick={onBack}  // Change this line
-        className="flex items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
+        className="flex md:hidden items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M19 12H5M12 5l-7 7 7 7" />

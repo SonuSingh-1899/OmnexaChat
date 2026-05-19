@@ -161,10 +161,15 @@ const ChatSidebar = ({
   onAcceptRequest,
 }) => {
   const normalizedSearch = searchQuery.trim();
+
+  // Connected users jo search query se match karte hain (local filter)
   const connectedMatches = users.filter((chatUser) => matchesSearch(chatUser, searchQuery));
+
+  // DB search results mein se sirf wo jo connected nahi hain (duplicate avoid karne ke liye)
+  const nonConnectedSearchResults = searchResults.filter((chatUser) => !chatUser.isConnected);
+
   const showRequestSection = !normalizedSearch && incomingRequests.length > 0;
   const showSearchSection = Boolean(normalizedSearch);
-  const showOnlySearchResults = isCompactMobile && normalizedSearch;
 
   const handleCardAction = (action, chatUser) => {
     if (action === 'accept') {
@@ -182,11 +187,6 @@ const ChatSidebar = ({
     }
   };
 
-  const shouldShowConnectedEmptyState =
-    !connectedMatches.length && !showSearchSection && !showRequestSection;
-  const shouldShowSearchEmptyState =
-    showSearchSection && !isSearching && !connectedMatches.length && !searchResults.length;
-
   return (
     <div
       className={`sidebar w-80 flex flex-col min-h-0 ${
@@ -202,21 +202,74 @@ const ChatSidebar = ({
         className="flex-1 overflow-y-auto px-3 py-2.5"
         style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}
       >
-        {showOnlySearchResults ? (
-          <>
-            <SectionTitle theme={theme}>Search Results</SectionTitle>
+        {/* Pending Requests — sirf tab jab search nahi ho raha */}
+        {showRequestSection && (
+          <div className="mb-4">
+            <SectionTitle theme={theme}>Pending Requests</SectionTitle>
+            {incomingRequests.map((chatUser) => (
+              <UserCard
+                key={`request-${chatUser.id}`}
+                chatUser={chatUser}
+                theme={theme}
+                isSelected={selectedUser?.id === chatUser.id}
+                subtitle={`${chatUser.email} wants to connect`}
+                actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
+                onClick={() => onSelectUser(chatUser)}
+                onAction={handleCardAction}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Connected Users — hamesha dikhega, search hone par filtered */}
+        <div className={showSearchSection ? 'mb-4' : ''}>
+          <SectionTitle theme={theme}>
+            {showSearchSection ? 'Connected' : 'Connected Users'}
+          </SectionTitle>
+
+          {connectedMatches.length === 0 && !showSearchSection ? (
+            <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
+              No connected users yet. Search someone above and send a request.
+            </p>
+          ) : connectedMatches.length === 0 && showSearchSection ? (
+            <p className="text-center py-4 px-5 text-sm" style={{ color: theme.muted }}>
+              No connected users match your search.
+            </p>
+          ) : (
+            connectedMatches.map((chatUser) => (
+              <UserCard
+                key={`connected-${chatUser.id}`}
+                chatUser={chatUser}
+                theme={theme}
+                isSelected={selectedUser?.id === chatUser.id}
+                subtitle={chatUser.lastMessage || 'Ready to chat'}
+                trailingText={
+                  chatUser.lastMessageTime
+                    ? formatLastMessageTime(chatUser.lastMessageTime)
+                    : ''
+                }
+                onClick={() => onSelectUser(chatUser)}
+              />
+            ))
+          )}
+        </div>
+
+        {/* DB Search Results — sirf non-connected users, desktop + mobile dono pe */}
+        {showSearchSection && (
+          <div className="mt-2">
+            <SectionTitle theme={theme}>Other Users</SectionTitle>
             {isSearching ? (
               <p className="text-center py-8 px-5 text-sm" style={{ color: theme.muted }}>
                 Searching users...
               </p>
-            ) : searchResults.length === 0 ? (
-              <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
-                No matching users found.
+            ) : nonConnectedSearchResults.length === 0 ? (
+              <p className="text-center py-4 px-5 text-sm" style={{ color: theme.muted }}>
+                No other users found.
               </p>
             ) : (
-              searchResults.map((chatUser) => (
+              nonConnectedSearchResults.map((chatUser) => (
                 <UserCard
-                  key={`mobile-search-${chatUser.id}`}
+                  key={`search-${chatUser.id}`}
                   chatUser={chatUser}
                   theme={theme}
                   isSelected={selectedUser?.id === chatUser.id}
@@ -227,88 +280,7 @@ const ChatSidebar = ({
                 />
               ))
             )}
-          </>
-        ) : (
-          <>
-            {showRequestSection && (
-              <div className="mb-4">
-                <SectionTitle theme={theme}>Pending Requests</SectionTitle>
-                {incomingRequests.map((chatUser) => (
-                  <UserCard
-                    key={`request-${chatUser.id}`}
-                    chatUser={chatUser}
-                    theme={theme}
-                    isSelected={selectedUser?.id === chatUser.id}
-                    subtitle={`${chatUser.email} wants to connect`}
-                    actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
-                    onClick={() => onSelectUser(chatUser)}
-                    onAction={handleCardAction}
-                  />
-                ))}
-              </div>
-            )}
-
-            <div>
-              <SectionTitle theme={theme}>Connected Users</SectionTitle>
-              {connectedMatches.length === 0 && !showSearchSection && !showRequestSection ? (
-                <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
-                  No connected users yet. Search someone above and send a request.
-                </p>
-              ) : (
-                connectedMatches.map((chatUser) => (
-                  <UserCard
-                    key={`connected-${chatUser.id}`}
-                    chatUser={chatUser}
-                    theme={theme}
-                    isSelected={selectedUser?.id === chatUser.id}
-                    subtitle={chatUser.lastMessage || 'Ready to chat'}
-                    trailingText={chatUser.lastMessageTime ? formatLastMessageTime(chatUser.lastMessageTime) : ''}
-                    onClick={() => onSelectUser(chatUser)}
-                  />
-                ))
-              )}
-            </div>
-
-            {showSearchSection && !isCompactMobile && (
-              <div className="mt-4">
-                <SectionTitle theme={theme}>Search Results</SectionTitle>
-                {isSearching ? (
-                  <p className="text-center py-8 px-5 text-sm" style={{ color: theme.muted }}>
-                    Searching users...
-                  </p>
-                ) : searchResults.length === 0 ? (
-                  <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
-                    No matching users found.
-                  </p>
-                ) : (
-                  searchResults.map((chatUser) => (
-                    <UserCard
-                      key={`search-${chatUser.id}`}
-                      chatUser={chatUser}
-                      theme={theme}
-                      isSelected={selectedUser?.id === chatUser.id}
-                      subtitle={chatUser.bio?.trim() || chatUser.email}
-                      actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
-                      onClick={() => onSelectUser(chatUser)}
-                      onAction={handleCardAction}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* {shouldShowConnectedEmptyState && (
-              <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
-                No connected users yet. Search someone above and send a request.
-              </p>
-            )} */}
-
-            {shouldShowSearchEmptyState && !isCompactMobile && (
-              <p className="text-center py-10 px-5 text-sm" style={{ color: theme.muted }}>
-                No matching users found.
-              </p>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>
