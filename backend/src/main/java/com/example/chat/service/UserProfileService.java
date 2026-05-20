@@ -29,7 +29,7 @@ import com.example.chat.exception.BusinessException;
 import com.example.chat.repository.UserConnectionRepository;
 import com.example.chat.repository.UserRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserProfileService {
@@ -193,6 +193,7 @@ public class UserProfileService {
         return convertToResponse(user, buildRelationshipFlags(currentUser, user), true);
     }
 
+    @Transactional(readOnly = true)
     public List<UserProfileResponse> getAllUsers() {
         User currentUser = getCurrentUser();
         Map<Long, RelationshipFlags> relationshipMap = buildRelationshipMap(currentUser);
@@ -208,6 +209,7 @@ public class UserProfileService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<UserProfileResponse> getConnectedUsers() {
         User currentUser = getCurrentUser();
         Map<Long, RelationshipFlags> relationshipMap = buildRelationshipMap(currentUser);
@@ -224,8 +226,11 @@ public class UserProfileService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<UserProfileResponse> searchUsers(String query) {
         User currentUser = getCurrentUser();
+            System.out.println("Current User = " + currentUser.getEmail());
+    System.out.println("Total Users = " + userRepository.count());
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         Map<Long, RelationshipFlags> relationshipMap = buildRelationshipMap(currentUser);
 
@@ -242,6 +247,7 @@ public class UserProfileService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<UserProfileResponse> getIncomingRequests() {
         User currentUser = getCurrentUser();
 
@@ -387,6 +393,11 @@ public class UserProfileService {
 
             relationshipMap.put(otherUser.getId(), flags);
         });
+
+            System.out.println(
+            "Relationship Map Size = "
+            + relationshipMap.size()
+        );
 
         return relationshipMap;
     }
