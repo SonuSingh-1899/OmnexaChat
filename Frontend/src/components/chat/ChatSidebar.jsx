@@ -1,3 +1,6 @@
+import { useState, useRef } from 'react';
+import ProfilePopup from './ProfilePopup';
+
 const formatLastMessageTime = (timestamp) => {
   if (!timestamp) {
     return '';
@@ -82,68 +85,133 @@ const UserCard = ({
   actionConfig,
   onClick,
   onAction,
-}) => (
-  <div
-    onClick={onClick}
-    className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer mb-2 transition-colors duration-200"
-    style={{
-      background: isSelected ? theme.subtle : 'transparent',
-    }}
-    onMouseEnter={(event) => {
-      if (!isSelected) {
-        event.currentTarget.style.background = theme.subtle;
-      }
-    }}
-    onMouseLeave={(event) => {
-      if (!isSelected) {
-        event.currentTarget.style.background = 'transparent';
-      }
-    }}
-  >
-    <div
-      className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold"
-      style={{ background: theme.pageBackground, color: theme.text }}
-    >
-      {getUserInitial(chatUser.name)}
-    </div>
+  onUnfollow,
+  onReject,
+  onCancel,
+  onAccept,
+  onSendRequest,
+  actionUserId,
+}) => {
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 }); // ✅ Moved inside UserCard
+  const longPressTimer = useRef(null);
+  const isLongPress = useRef(false);
 
-    <div className="flex-1 min-w-0">
-      <div className="flex justify-between items-baseline gap-2">
-        <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
-          {chatUser.name}
-        </p>
+  const handleTouchStart = (e) => {
+    isLongPress.current = false;
+    const clientX = e.touches?.[0]?.clientX || e.clientX;
+    const clientY = e.touches?.[0]?.clientY || e.clientY;
 
-        {trailingText && (
-          <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
-            {trailingText}
-          </span>
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      setPopupPosition({ x: clientX - 100, y: clientY - 60 });
+      setShowProfilePopup(true);
+    }, 500);
+  };
+
+  const handleTouchEnd = (e) => {
+    clearTimeout(longPressTimer.current);
+    if (isLongPress.current) {
+      e?.stopPropagation();
+      return;
+    }
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  const handleTouchMove = () => {
+    clearTimeout(longPressTimer.current);
+  };
+
+  return (
+    <>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onMouseDown={handleTouchStart}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={() => clearTimeout(longPressTimer.current)}
+        className="flex items-center gap-3 p-3.5 rounded-xl cursor-pointer mb-2 transition-colors duration-200"
+        style={{
+          background: isSelected ? theme.subtle : 'transparent',
+        }}
+        onMouseEnter={(event) => {
+          if (!isSelected) {
+            event.currentTarget.style.background = theme.subtle;
+          }
+        }}
+        onMouseLeave={(event) => {
+          if (!isSelected) {
+            event.currentTarget.style.background = 'transparent';
+          }
+        }}
+      >
+        <div
+          className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold"
+          style={{ background: theme.pageBackground, color: theme.text }}
+        >
+          {getUserInitial(chatUser.name)}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-baseline gap-2">
+            <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
+              {chatUser.name}
+            </p>
+            {trailingText && (
+              <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
+                {trailingText}
+              </span>
+            )}
+          </div>
+          <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
+            {subtitle}
+          </p>
+        </div>
+
+        {actionConfig && !chatUser.isConnected && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (actionConfig.action === 'accept') {
+                onAccept?.(chatUser);
+              } else if (actionConfig.action === 'send-request') {
+                onSendRequest?.(chatUser);
+              } else if (actionConfig.action === 'requested') {
+                onCancel?.(chatUser);
+              }
+            }}
+            disabled={actionConfig.disabled}
+            className="shrink-0 px-3 py-2 rounded-xl border-none text-xs font-semibold cursor-pointer transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: actionConfig.appearance === 'primary' ? theme.accent : theme.pageBackground,
+              color: actionConfig.appearance === 'primary' ? theme.accentText : theme.text,
+            }}
+          >
+            {actionConfig.action === 'requested' ? 'Cancel' : actionConfig.label}
+          </button>
         )}
       </div>
 
-      <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
-        {subtitle}
-      </p>
-    </div>
-
-    {actionConfig && (
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onAction?.(actionConfig.action, chatUser);
-        }}
-        disabled={actionConfig.disabled}
-        className="shrink-0 px-3 py-2 rounded-xl border-none text-xs font-semibold cursor-pointer transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-        style={{
-          background: actionConfig.appearance === 'primary' ? theme.accent : theme.pageBackground,
-          color: actionConfig.appearance === 'primary' ? theme.accentText : theme.text,
-        }}
-      >
-        {actionConfig.label}
-      </button>
-    )}
-  </div>
-);
+      <ProfilePopup
+        user={chatUser}
+        theme={theme}
+        isVisible={showProfilePopup}
+        onClose={() => setShowProfilePopup(false)}
+        onUnfollow={onUnfollow}
+        onAccept={onAccept}
+        onReject={onReject}
+        onCancel={onCancel}
+        onSendRequest={onSendRequest}
+        actionUserId={actionUserId}
+        position={popupPosition}
+      />
+    </>
+  );
+};
 
 const ChatSidebar = ({
   theme,
@@ -159,15 +227,14 @@ const ChatSidebar = ({
   onSelectUser,
   onSendRequest,
   onAcceptRequest,
+  onRejectRequest,
+  onCancelRequest,
+  onUnfollowUser,
 }) => {
   const normalizedSearch = searchQuery.trim();
 
-  // Connected users jo search query se match karte hain (local filter)
   const connectedMatches = users.filter((chatUser) => matchesSearch(chatUser, searchQuery));
-
-  // DB search results mein se sirf wo jo connected nahi hain (duplicate avoid karne ke liye)
   const nonConnectedSearchResults = searchResults.filter((chatUser) => !chatUser.isConnected);
-
   const showRequestSection = !normalizedSearch && incomingRequests.length > 0;
   const showSearchSection = Boolean(normalizedSearch);
 
@@ -176,12 +243,14 @@ const ChatSidebar = ({
       void onAcceptRequest(chatUser);
       return;
     }
-
     if (action === 'send-request') {
       void onSendRequest(chatUser);
       return;
     }
-
+    if (action === 'requested') {
+      void onCancelRequest(chatUser);
+      return;
+    }
     if (action === 'open-chat') {
       void onSelectUser(chatUser);
     }
@@ -202,7 +271,6 @@ const ChatSidebar = ({
         className="flex-1 overflow-y-auto px-3 py-2.5"
         style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}
       >
-        {/* Pending Requests — sirf tab jab search nahi ho raha */}
         {showRequestSection && (
           <div className="mb-4">
             <SectionTitle theme={theme}>Pending Requests</SectionTitle>
@@ -216,12 +284,17 @@ const ChatSidebar = ({
                 actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
                 onClick={() => onSelectUser(chatUser)}
                 onAction={handleCardAction}
+                onUnfollow={onUnfollowUser}
+                onReject={onRejectRequest}
+                onCancel={onCancelRequest}
+                onAccept={onAcceptRequest}
+                onSendRequest={onSendRequest}
+                actionUserId={actionUserId}
               />
             ))}
           </div>
         )}
 
-        {/* Connected Users — hamesha dikhega, search hone par filtered */}
         <div className={showSearchSection ? 'mb-4' : ''}>
           <SectionTitle theme={theme}>
             {showSearchSection ? 'Connected' : 'Connected Users'}
@@ -249,12 +322,15 @@ const ChatSidebar = ({
                     : ''
                 }
                 onClick={() => onSelectUser(chatUser)}
+                onUnfollow={onUnfollowUser}
+                onAccept={onAcceptRequest}
+                onSendRequest={onSendRequest}
+                actionUserId={actionUserId}
               />
             ))
           )}
         </div>
 
-        {/* DB Search Results — sirf non-connected users, desktop + mobile dono pe */}
         {showSearchSection && (
           <div className="mt-2">
             <SectionTitle theme={theme}>Other Users</SectionTitle>
@@ -277,6 +353,12 @@ const ChatSidebar = ({
                   actionConfig={getActionConfig(chatUser, actionUserId === chatUser.id)}
                   onClick={() => onSelectUser(chatUser)}
                   onAction={handleCardAction}
+                  onUnfollow={onUnfollowUser}
+                  onReject={onRejectRequest}
+                  onCancel={onCancelRequest}
+                  onAccept={onAcceptRequest}
+                  onSendRequest={onSendRequest}
+                  actionUserId={actionUserId}
                 />
               ))
             )}

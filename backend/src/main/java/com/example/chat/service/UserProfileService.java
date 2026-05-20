@@ -325,6 +325,79 @@ public class UserProfileService {
         return convertToResponse(requesterUser, new RelationshipFlags(true, false, false), false);
     }
 
+    // unfollow request method
+    @Transactional
+    public String unfollowUser(Long targetUserId) {
+        User currentUser = getCurrentUser();
+        User targetUser = userRepository.findById(targetUserId)
+            .orElseThrow(() -> new BusinessException("User not found"));
+        
+        // Self check
+        if (currentUser.getId().equals(targetUser.getId())) {
+            throw new BusinessException("You cannot unfollow yourself");
+        }
+        
+        // Find existing connection using existing repository method
+        UserConnection connection = userConnectionRepository
+            .findRelationshipBetween(currentUser, targetUser)
+            .orElseThrow(() -> new BusinessException("No connection exists between you and this user"));
+        
+        // Validate status - only ACCEPTED connections can be unfollowed
+        if (connection.getStatus() != UserConnection.ConnectionStatus.ACCEPTED) {
+            if (connection.getStatus() == UserConnection.ConnectionStatus.PENDING) {
+                throw new BusinessException("Request is pending. Use cancelRequest() to cancel your sent request");
+            }
+            throw new BusinessException("Cannot unfollow: Current status is " + connection.getStatus());
+        }
+        
+        // Log the action
+        log.info("User {} unfollowed user {}", currentUser.getEmail(), targetUser.getEmail());
+        
+        // Delete the connection
+        userConnectionRepository.delete(connection);
+        
+        return "Unfollowed successfully";
+    }
+
+
+    // reject request friend request
+    @Transactional
+    public String rejectFollowRequest(Long requesterUserId) {
+        User currentUser = getCurrentUser();
+        User requesterUser = userRepository.findById(requesterUserId)
+            .orElseThrow(() -> new BusinessException("User not found"));
+        
+        // Self check
+        if (currentUser.getId().equals(requesterUser.getId())) {
+            throw new BusinessException("Cannot reject your own request");
+        }
+        
+        // Find the connection
+        UserConnection connection = userConnectionRepository
+            .findRelationshipBetween(currentUser, requesterUser)
+            .orElseThrow(() -> new BusinessException("No request found from this user"));
+        
+        // Security check: Current user must be the recipient
+        if (!connection.getRecipient().getId().equals(currentUser.getId())) {
+            throw new BusinessException("You can only reject requests sent to you");
+        }
+        
+        // Status check - only PENDING requests can be rejected
+        if (connection.getStatus() != UserConnection.ConnectionStatus.PENDING) {
+            if (connection.getStatus() == UserConnection.ConnectionStatus.ACCEPTED) {
+                throw new BusinessException("Request already accepted. Use unfollow() to disconnect.");
+            }
+            throw new BusinessException("Request already processed with status: " + connection.getStatus());
+        }
+        
+        log.info("User {} rejected follow request from {}", currentUser.getEmail(), requesterUser.getEmail());
+        
+        // Delete the pending request
+        userConnectionRepository.delete(connection);
+        
+        return "Follow request rejected successfully";
+    }
+
     public void assertUsersConnected(String otherEmail) {
         assertUsersConnected(getCurrentUserEmail(), otherEmail);
     }
@@ -393,12 +466,6 @@ public class UserProfileService {
 
             relationshipMap.put(otherUser.getId(), flags);
         });
-
-            System.out.println(
-            "Relationship Map Size = "
-            + relationshipMap.size()
-        );
-
         return relationshipMap;
     }
 

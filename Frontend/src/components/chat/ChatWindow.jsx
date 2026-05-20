@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const getTimestampValue = (timestamp) => {
   const resolvedTimestamp = new Date(timestamp).getTime();
@@ -174,11 +174,13 @@ const ChatWindow = ({
   onSendMessage,
   onSendRequest,
   onAcceptRequest,
+  onUnfollow,
   onBack,
   onNavigateToDashboard,
 }) => {
   const messagesContainerRef = useRef(null);
   const orderedMessages = sortMessagesByTime(messages);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     const messagesContainer = messagesContainerRef.current;
@@ -217,15 +219,15 @@ const ChatWindow = ({
           background: theme.surface,
         }}
       >
-      <button
-        onClick={onBack}  // Change this line
-        className="flex md:hidden items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 12H5M12 5l-7 7 7 7" />
-        </svg>
-        <span className="hidden text-sm md:inline">Back to Chat</span>
-      </button>
+        <button
+          onClick={onBack}
+          className="flex md:hidden items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 12H5M12 5l-7 7 7 7" />
+          </svg>
+          <span className="hidden text-sm md:inline">Back to Chat</span>
+        </button>
 
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center font-bold shrink-0"
@@ -243,15 +245,66 @@ const ChatWindow = ({
           </p>
         </div>
 
-        <span
-          className="dashboard-chat-status text-xs px-2.5 py-1 rounded-full shrink-0"
-          style={{
-            background: selectedUser.isConnected && isUserOnline ? theme.subtle : theme.pageBackground,
-            color: selectedUser.isConnected && isUserOnline ? theme.accent : theme.muted,
-          }}
-        >
-          {userStatusText}
-        </span>
+        {selectedUser.isConnected && onUnfollow && (
+          <div className="relative">
+      
+              <span
+                className="dashboard-chat-status text-xs px-2.5 py-2 rounded-full shrink-0"
+                style={{
+                  background: selectedUser.isConnected && isUserOnline ? theme.subtle : theme.pageBackground,
+                  color: selectedUser.isConnected && isUserOnline ? theme.accent : theme.muted,
+                }}
+              >
+                {userStatusText}
+              </span>
+
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-full hover:bg-opacity-10 transition-colors bg-transparent border-none cursor-pointer"
+              style={{ color: theme.muted }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="12" cy="5" r="1" />
+                <circle cx="12" cy="19" r="1" />
+              </svg>
+            </button>
+
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                  <div
+                    className="absolute right-0 top-full mt-4 w-33 rounded-xl shadow-lg z-50 overflow-hidden"
+                    style={{
+                      background: theme.surface,
+                      border: `1px solid ${theme.border}`,
+                      boxShadow: `0 10px 25px ${theme.shadow}`,
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        onUnfollow?.(selectedUser);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 text-xs font-medium transition-colors flex items-center gap-2 bg-transparent border-none cursor-pointer hover:bg-opacity-5"
+                      style={{
+                        color: theme.text,
+                        background: 'transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = theme.subtle;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span>Unfollow</span>
+                    </button>
+                  </div>
+                </>
+              )}
+          </div>
+        )}
       </div>
 
       {!selectedUser.isConnected ? (

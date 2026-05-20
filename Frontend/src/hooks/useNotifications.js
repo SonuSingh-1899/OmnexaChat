@@ -38,7 +38,11 @@ const createNotification = ({ id, type, userId, title, message }) => ({
 export default function useNotifications({ user, onConnectionChange }) {
   const [notifications, setNotifications] = useState(() => readStoredNotifications(user?.email));
   const [pendingIncomingRequestIds, setPendingIncomingRequestIds] = useState([]);
+  
+  // ✅ FIX: Store previous state of ALL outgoing requests (including pending and accepted)
   const previousOutgoingRequestIdsRef = useRef(new Set());
+  // ✅ NEW: Track which requests we already sent accepted notification for
+  const acceptedNotifiedIdsRef = useRef(new Set());
 
   useEffect(() => {
     localStorage.setItem(
@@ -68,6 +72,7 @@ export default function useNotifications({ user, onConnectionChange }) {
           currentNotifications.map((notification) => notification.id)
         );
 
+        // 1. Handle incoming requests notifications
         incomingRequests.forEach((chatUser) => {
           const notificationId = `incoming-request-${chatUser.id}`;
 
@@ -85,14 +90,21 @@ export default function useNotifications({ user, onConnectionChange }) {
           }
         });
 
+        // 2. ✅ FIX: Handle request accepted notifications
         allUsers.forEach((chatUser) => {
           const acceptedNotificationId = `request-accepted-${chatUser.id}`;
+          
+          // Check if this user was previously sent a request (regardless of current status)
+          const wasRequestSent = previousOutgoingRequestIdsRef.current.has(chatUser.id);
+          
+          // Check if they are now connected
+          const isNowConnected = chatUser.isConnected;
+          
+          // Check if we haven't already notified
+          const alreadyNotified = acceptedNotifiedIdsRef.current.has(chatUser.id);
 
-          if (
-            chatUser.isConnected &&
-            previousOutgoingRequestIdsRef.current.has(chatUser.id) &&
-            !existingNotificationIds.has(acceptedNotificationId)
-          ) {
+          if (wasRequestSent && isNowConnected && !alreadyNotified && !existingNotificationIds.has(acceptedNotificationId)) {
+            console.log(`✅ Creating accepted notification for user ${chatUser.name} (ID: ${chatUser.id})`);
             nextNotifications.unshift(
               createNotification({
                 id: acceptedNotificationId,
@@ -103,17 +115,23 @@ export default function useNotifications({ user, onConnectionChange }) {
               })
             );
             existingNotificationIds.add(acceptedNotificationId);
+            acceptedNotifiedIdsRef.current.add(chatUser.id);
           }
         });
 
         return sortNotifications(nextNotifications);
       });
 
-      previousOutgoingRequestIdsRef.current = new Set(
+      // ✅ FIX: Store current outgoing requests for next comparison
+      // Store ALL users that we have sent requests to (regardless of status)
+      const currentOutgoingIds = new Set(
         allUsers
-          .filter((chatUser) => chatUser.isRequestSent && !chatUser.isConnected)
+          .filter((chatUser) => chatUser.isRequestSent === true)
           .map((chatUser) => chatUser.id)
       );
+      
+      previousOutgoingRequestIdsRef.current = currentOutgoingIds;
+      
     } catch (error) {
       console.error('Failed to refresh notifications:', error);
     }

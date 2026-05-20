@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -98,6 +99,20 @@ public class UserProfileController {
         return ResponseEntity.ok(userProfileService.acceptFollowRequest(userId));
     }
 
+    // unfolow method 
+    @DeleteMapping("/users/{userId}/unfollow")
+    public ResponseEntity<Map<String, String>> unfollowUser(@PathVariable Long userId){
+        String message = userProfileService.unfollowUser(userId);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    // reject request
+    @DeleteMapping("/requests/{requesterId}/reject")
+    public ResponseEntity<Map<String, String>> rejectFollowRequest(@PathVariable Long requesterId) {
+        String message = userProfileService.rejectFollowRequest(requesterId);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
     @PostMapping("/presence/ping")
     public ResponseEntity<Map<String, String>> markPresenceOnline() {
         userProfileService.markCurrentUserOnline();
@@ -109,4 +124,5 @@ public class UserProfileController {
         userProfileService.markCurrentUserOffline();
         return ResponseEntity.ok(Map.of("message", "presence updated"));
     }
+
 }

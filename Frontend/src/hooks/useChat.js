@@ -297,6 +297,81 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     }
   }, [actionUserId, onConnectionChange, selectUser, syncAfterRelationshipChange]);
 
+  // hooks/useChat.js - Add these functions at the end, before the return statement
+
+  const unfollowUser = useCallback(async (chatUser) => {
+    if (!chatUser?.id || actionUserId) {
+      return;
+    }
+
+    setActionUserId(chatUser.id);
+
+    try {
+      await profileApi.unfollowUser(chatUser.id);
+      await syncAfterRelationshipChange();
+      
+      if (selectedUser?.id === chatUser.id) {
+        clearSelectedUser();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to unfollow user:', error);
+      throw error;
+    } finally {
+      setActionUserId(null);
+    }
+  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+
+  const rejectFollowRequest = useCallback(async (requesterUser) => {
+    if (!requesterUser?.id || actionUserId) {
+      return;
+    }
+
+    setActionUserId(requesterUser.id);
+
+    try {
+      await profileApi.rejectFollowRequest(requesterUser.id);
+      await syncAfterRelationshipChange();
+      
+      if (selectedUser?.id === requesterUser.id) {
+        clearSelectedUser();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to reject request:', error);
+      throw error;
+    } finally {
+      setActionUserId(null);
+    }
+  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+
+  const cancelSentRequest = useCallback(async (targetUser) => {
+    if (!targetUser?.id || actionUserId) {
+      return;
+    }
+
+    setActionUserId(targetUser.id);
+
+    try {
+      await profileApi.cancelSentRequest(targetUser.id);
+      await syncAfterRelationshipChange();
+      
+      if (selectedUser?.id === targetUser.id) {
+        clearSelectedUser();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to cancel request:', error);
+      throw error;
+    } finally {
+      setActionUserId(null);
+    }
+  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+
+
   const sendMessage = useCallback(async (event) => {
     event.preventDefault();
 
@@ -377,5 +452,8 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,
+    unfollowUser,
+    rejectFollowRequest,
+    cancelSentRequest,
   };
 }

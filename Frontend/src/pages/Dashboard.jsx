@@ -223,7 +223,6 @@ const Dashboard = ({
     setMobileSearchQuery(query);
   };
 
-  // Mobile pe mobileSearchQuery use hoga, desktop pe searchQuery
   const effectiveSearchQuery = String(isCompactMobile ? mobileSearchQuery : searchQuery);
 
   const {
@@ -243,6 +242,9 @@ const Dashboard = ({
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,
+    unfollowUser,
+    rejectFollowRequest,
+    cancelSentRequest,
   } = useChat({
     user,
     searchQuery: effectiveSearchQuery,
@@ -391,6 +393,9 @@ const Dashboard = ({
             onAcceptRequest={(chatUser) => {
               void acceptFollowRequest(chatUser, { openChat: true });
             }}
+            onRejectRequest={rejectFollowRequest}
+            onCancelRequest={cancelSentRequest}
+            onUnfollowUser={unfollowUser}
             onNavigateToSettings={onNavigateToSettings}
           />
         )}
@@ -423,6 +428,7 @@ const Dashboard = ({
               onAcceptRequest={(chatUser) => {
                 void acceptFollowRequest(chatUser, { openChat: true });
               }}
+              onUnfollow={unfollowUser}
               onBack={clearSelectedUser}
             />
           </div>

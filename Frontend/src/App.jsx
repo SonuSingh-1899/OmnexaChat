@@ -307,6 +307,24 @@ const App = () => {
     }
   };
 
+  const handleRejectNotificationRequest = async (userId) => {
+  if (notificationActionUserId) {
+    return;
+  }
+
+  setNotificationActionUserId(userId);
+
+  try {
+    await profileApi.rejectFollowRequest(userId);
+    await loadCurrentUser();
+    setIsNotificationsOpen(false);
+  } catch (error) {
+    console.error('Failed to reject request from notifications:', error);
+  } finally {
+    setNotificationActionUserId(null);
+  }
+};
+
   const notificationPanel = currentUser ? (
     <NotificationPanel
       theme={currentTheme}
@@ -316,6 +334,7 @@ const App = () => {
       actionUserId={notificationActionUserId}
       onClose={handleCloseNotifications}
       onAcceptRequest={handleAcceptNotificationRequest}
+      onRejectRequest={handleRejectNotificationRequest}
       onDismissNotification={dismissNotification}
     />
   ) : null;

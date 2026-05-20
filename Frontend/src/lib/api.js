@@ -104,6 +104,26 @@ export const profileApi = {
     const { data } = await api.post(`/profile/requests/${userId}/accept`);
     return normalizeUserProfile(data);
   },
+
+    // Unfollow a connected user
+  unfollowUser: async (userId) => {
+    const { data } = await api.delete(`/profile/users/${userId}/unfollow`);
+    return data; // Returns { message: "Unfollowed successfully" }
+  },
+  
+  // Reject a pending follow request
+  rejectFollowRequest: async (requesterId) => {
+    const { data } = await api.delete(`/profile/requests/${requesterId}/reject`);
+    return data; // Returns { message: "Follow request rejected successfully" }
+  },
+  
+  // Cancel your own sent follow request
+  cancelSentRequest: async (targetId) => {
+    const { data } = await api.delete(`/profile/requests/${targetId}/cancel`);
+    return data; // Returns { message: "Follow request cancelled successfully" }
+  },
+
+  
   pingPresence: async () => {
     const { data } = await api.post('/profile/presence/ping');
     return data;
