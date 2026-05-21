@@ -1,47 +1,52 @@
 export const UI_THEME_KEY = 'uiTheme';
 
 export const THEME_OPTIONS = {
-  sand: {
-    key: 'sand',
-    label: 'Logo White',
-    pageBackground: '#f6f6f7',
-    surface: '#ffffff',
-    subtle: '#f3f4f6',
-    border: '#e5e7eb',
-    accent: '#111111',
-    accentText: '#ffffff',
-    muted: '#6b7280',
-    text: '#111111',
-    shadow: 'rgba(17, 17, 17, 0.08)',
+  // Black & White Mix (Dark Gray + White)
+  charcoal: {
+    key: 'charcoal',
+    label: 'Charcoal',
+    pageBackground: '#1a1a1a',
+    surface: '#262626',
+    subtle: '#2d2d2d',
+    border: '#404040',
+    accent: '#e5e5e5',
+    accentText: '#1a1a1a',
+    muted: '#a3a3a3',
+    text: '#f5f5f5',
+    shadow: 'rgba(0, 0, 0, 0.3)',
   },
-  ocean: {
-    key: 'ocean',
-    label: 'Ink Silver',
-    pageBackground: '#f3f4f6',
+  
+  // // Pure Black + Blue
+  // obsidian: {
+  //   key: 'obsidian',
+  //   label: 'Obsidian',
+  //   pageBackground: '#000000',
+  //   surface: '#0a0a0a',
+  //   subtle: '#111111',
+  //   border: '#1a1a1a',
+  //   accent: '#3b82f6',
+  //   accentText: '#ffffff',
+  //   muted: '#6b7280',
+  //   text: '#ffffff',
+  //   shadow: 'rgba(59, 130, 246, 0.2)',
+  // },
+  
+  // White & Black (Pure Light)
+  pureLight: {
+    key: 'pureLight',
+    label: 'Pure Light',
+    pageBackground: '#ffffff',
     surface: '#ffffff',
-    subtle: '#eef0f3',
-    border: '#d7dbe2',
-    accent: '#1f2937',
-    accentText: '#ffffff',
-    muted: '#667085',
-    text: '#111827',
-    shadow: 'rgba(17, 24, 39, 0.10)',
-  },
-  forest: {
-    key: 'forest',
-    label: 'Obsidian',
-    pageBackground: '#f5f5f5',
-    surface: '#ffffff',
-    subtle: '#f1f1f1',
-    border: '#dddddd',
+    subtle: '#f5f5f5',
+    border: '#e5e5e5',
     accent: '#000000',
     accentText: '#ffffff',
-    muted: '#707070',
-    text: '#121212',
-    shadow: 'rgba(0, 0, 0, 0.12)',
+    muted: '#737373',
+    text: '#000000',
+    shadow: 'rgba(0, 0, 0, 0.08)',
   },
 };
 
-export const DEFAULT_THEME_KEY = 'sand';
+export const DEFAULT_THEME_KEY = 'pureLight';
 
 export const getTheme = (themeKey) => THEME_OPTIONS[themeKey] || THEME_OPTIONS[DEFAULT_THEME_KEY];

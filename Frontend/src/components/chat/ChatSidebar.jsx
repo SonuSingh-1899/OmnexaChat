@@ -1,3 +1,4 @@
+// ChatSidebar.jsx
 import { useState, useRef } from 'react';
 import ProfilePopup from './ProfilePopup';
 
@@ -93,7 +94,7 @@ const UserCard = ({
   actionUserId,
 }) => {
   const [showProfilePopup, setShowProfilePopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 }); // ✅ Moved inside UserCard
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const longPressTimer = useRef(null);
   const isLongPress = useRef(false);
 

@@ -155,8 +155,13 @@ const Profile = ({
 
   return (
     <div
-      className="min-h-screen bg-white"
-      style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}
+      className="min-h-screen"
+      style={{
+        background: theme.pageBackground,
+        fontFamily: "'DM Sans', sans-serif",
+        color: theme.text,
+        paddingBottom: isCompactMobile ? '96px' : undefined,
+      }}
     >
       {isCompactMobile && (
         <MobileTopBar
@@ -166,40 +171,69 @@ const Profile = ({
         />
       )}
 
-      {/* <div className={`bg-white/80 backdrop-blur-sm border-b border-stone-200 px-6 py-4 items-center justify-between sticky top-0 z-10 ${isCompactMobile ? 'hidden md:flex' : 'flex'}`}>
+      {/* Header - Same as Settings page */}
+      <div
+        className={`flex items-center justify-between px-4 py-4 md:px-8 md:py-6 border-b ${isCompactMobile ? 'hidden md:flex' : 'flex'}`}
+        style={{
+          background: theme.pageBackground,
+          borderBottomColor: theme.border,
+        }}
+      >
         <button
           onClick={onNavigateToDashboard}
-          className="flex items-center gap-2 text-stone-700 hover:text-stone-900 transition-colors"
+          className="flex items-center gap-2 text-sm transition-colors"
+          style={{ color: theme.text }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          <span className="hidden text-sm md:inline">Back to Chat</span>
+          <span className="hidden md:inline">Back to Chat</span>
         </button>
-        <h1 className="font-serif text-xl font-normal text-stone-800">
+        <h1 className="font-serif text-xl md:text-2xl font-normal m-0 flex-1 text-center md:flex-none">
           Profile
         </h1>
-        <div className="w-20" />
-      </div> */}
+        <div className="w-17.5 md:w-27.5" />
+      </div>
 
       <div className="max-w-lg mx-auto px-6 py-8">
         <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-linear-to-br from-stone-800 to-stone-700 flex items-center justify-center text-white text-4xl font-medium shadow-lg">
+          <div 
+            className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center text-white text-4xl font-medium shadow-lg"
+            style={{
+              background: theme.accent,
+            }}
+          >
             {formData.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || '?'}
           </div>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm" style={{ color: theme.muted }}>
             {user?.email}
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3">
-              <p className="m-0 text-xs uppercase tracking-[0.18em] text-stone-400">Followers</p>
-              <p className="mt-2 mb-0 text-2xl font-semibold text-stone-800">
+            <div 
+              className="rounded-xl p-4"
+              style={{
+                border: `1px solid ${theme.border}`,
+                background: theme.surface,
+              }}
+            >
+              <p className="m-0 text-xs uppercase tracking-wide" style={{ color: theme.muted }}>
+                Followers
+              </p>
+              <p className="mt-2 mb-0 text-2xl font-semibold" style={{ color: theme.text }}>
                 {user?.followersCount ?? 0}
               </p>
             </div>
-            <div className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3">
-              <p className="m-0 text-xs uppercase tracking-[0.18em] text-stone-400">Following</p>
-              <p className="mt-2 mb-0 text-2xl font-semibold text-stone-800">
+            <div 
+              className="rounded-xl p-4"
+              style={{
+                border: `1px solid ${theme.border}`,
+                background: theme.surface,
+              }}
+            >
+              <p className="m-0 text-xs uppercase tracking-wide" style={{ color: theme.muted }}>
+                Following
+              </p>
+              <p className="mt-2 mb-0 text-2xl font-semibold" style={{ color: theme.text }}>
                 {user?.followingCount ?? 0}
               </p>
             </div>
@@ -209,9 +243,12 @@ const Profile = ({
         {message.text && (
           <div className={`p-3 rounded-lg mb-6 text-sm text-center ${
             message.type === 'success' 
-              ? 'bg-green-50 text-green-700 border border-green-200' 
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
+              ? 'border border-green-200' 
+              : 'border border-red-200'
+          }`} style={{
+            background: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
+            color: message.type === 'success' ? '#166534' : '#991b1b',
+          }}>
             {message.text}
           </div>
         )}
@@ -219,7 +256,7 @@ const Profile = ({
         {isEditing ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: theme.muted }}>
                 Name
               </label>
               <div>
@@ -228,9 +265,12 @@ const Profile = ({
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2.5 rounded-lg border ${
-                    errors.name ? 'border-red-400' : 'border-stone-200'
-                  } focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent bg-white text-stone-800`}
+                  className="w-full px-3 py-2.5 rounded-lg outline-none transition-all"
+                  style={{
+                    border: `1px solid ${errors.name ? '#ef4444' : theme.border}`,
+                    background: theme.surface,
+                    color: theme.text,
+                  }}
                 />
                 {errors.name && (
                   <p className="text-red-500 text-xs mt-1">{errors.name}</p>
@@ -239,7 +279,7 @@ const Profile = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: theme.muted }}>
                 Bio
               </label>
               <div>
@@ -249,19 +289,21 @@ const Profile = ({
                   onChange={handleChange}
                   rows="4"
                   maxLength="200"
-                  autoFocus
                   placeholder="Tell something about yourself..."
-                  className={`w-full px-3 py-2.5 rounded-lg border ${
-                    errors.bio ? 'border-red-400' : 'border-stone-200'
-                  } focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent bg-white text-stone-800 resize-none`}
+                  className="w-full px-3 py-2.5 rounded-lg outline-none transition-all resize-none"
+                  style={{
+                    border: `1px solid ${errors.bio ? '#ef4444' : theme.border}`,
+                    background: theme.surface,
+                    color: theme.text,
+                  }}
                 />
                 <div className="mt-1 flex items-center justify-between">
                   {errors.bio ? (
                     <p className="text-red-500 text-xs">{errors.bio}</p>
                   ) : (
-                    <span className="text-xs text-stone-400">Max 200 characters</span>
+                    <span className="text-xs" style={{ color: theme.muted }}>Max 200 characters</span>
                   )}
-                  <span className="text-xs text-stone-400">{formData.bio.length}/200</span>
+                  <span className="text-xs" style={{ color: theme.muted }}>{formData.bio.length}/200</span>
                 </div>
               </div>
             </div>
@@ -270,14 +312,23 @@ const Profile = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-stone-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: theme.accent,
+                  color: theme.accentText,
+                }}
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
               <button
                 type="button"
                 onClick={closeEditMode}
-                className="flex-1 bg-white hover:bg-stone-50 text-stone-700 px-4 py-2.5 rounded-lg border border-stone-200 font-medium transition-all duration-200"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
+                style={{
+                  background: 'transparent',
+                  color: theme.text,
+                  border: `1px solid ${theme.border}`,
+                }}
               >
                 Cancel
               </button>
@@ -286,19 +337,25 @@ const Profile = ({
         ) : (
           <div className="space-y-6">
             <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: theme.muted }}>
                 Name
               </label>
-              <p className="py-2 text-stone-800 border-b border-stone-200">
+              <p className="py-2 border-b" style={{ 
+                color: theme.text,
+                borderBottomColor: theme.border,
+              }}>
                 {user?.name || '-'}
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-stone-500 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: theme.muted }}>
                 Bio
               </label>
-              <p className={`py-2 border-b border-stone-200 ${!user?.bio ? 'text-stone-400' : 'text-stone-800'}`}>
+              <p className="py-2 border-b" style={{ 
+                color: user?.bio ? theme.text : theme.muted,
+                borderBottomColor: theme.border,
+              }}>
                 {user?.bio || 'No bio added yet'}
               </p>
             </div>
@@ -307,14 +364,23 @@ const Profile = ({
               <button
                 type="button"
                 onClick={openEditMode}
-                className="flex-1 bg-stone-900 hover:bg-black text-white px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
+                style={{
+                  background: theme.accent,
+                  color: theme.accentText,
+                }}
               >
                 Edit Profile
               </button>
               <button
                 type="button"
                 onClick={onLogout}
-                className="flex-1 bg-white hover:bg-red-50 text-red-600 px-4 py-2.5 rounded-lg border border-red-200 font-medium transition-all duration-200"
+                className="flex-1 px-4 py-2.5 rounded-lg font-medium transition-all duration-200"
+                style={{
+                  background: 'transparent',
+                  color: '#ef4444',
+                  border: `1px solid #ef4444`,
+                }}
               >
                 Logout
               </button>

@@ -267,6 +267,12 @@ const App = () => {
       console.error('Failed to mark user offline before logout', error);
     }
 
+    if (currentUser?.email) {
+    localStorage.removeItem(`chatNotifications:${currentUser.email}`);
+    localStorage.removeItem(`dismissedNotifications:${currentUser.email}`);
+    console.log('Cleared notifications for:', currentUser.email);
+  }
+
     session.clear();
     setCurrentUser(null);
     setPendingSignup(null);

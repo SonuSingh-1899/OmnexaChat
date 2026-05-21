@@ -87,24 +87,20 @@ const ChangePassword = ({ theme = defaultTheme, onNavigateToDashboard, onSuccess
       fontFamily: "'DM Sans', sans-serif",
       color: theme.text,
     }}>
-      <div className="flex flex-col md:flex-row items-start md:items-center p-4 md:p-6 border-b" style={{
-        background: theme.surface,
+      <div className="flex items-center justify-between px-4 py-4 md:px-8 md:py-6 border-b" style={{
+        background: theme.pageBackground,
         borderBottomColor: theme.border,
       }}>
-        <button
-          onClick={onNavigateToDashboard}
-          className="bg-none border-none cursor-pointer flex items-center gap-2 text-sm"
-          style={{ color: theme.text }}
-        >
+        <button onClick={onNavigateToDashboard} className="flex items-center gap-2 text-sm" style={{ color: theme.text }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          Back
+          <span className="hidden md:inline">Back to Chat</span>
         </button>
-        <h1 className="font-serif text-xl font-normal m-0 md:mx-auto" style={{ color: theme.text }}>
+        <h1 className="font-serif text-xl md:text-2xl font-normal m-0 flex-1 text-center md:flex-none">
           Change Password
         </h1>
-        <div className="hidden md:block w-[70px]" />
+        <div className="w-17.5 md:w-27.5" />
       </div>
 
       <div className="max-w-md mx-auto my-8 md:my-16 px-6">
