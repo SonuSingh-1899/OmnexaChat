@@ -72,7 +72,7 @@ const ProfilePopup = ({
       {/* Popup Menu */}
       <div
         ref={popupRef}
-        className="fixed z-50 min-w-50 max-w-70] rounded-xl shadow-xl overflow-hidden animate-fadeIn"
+        className="fixed z-50 min-w-50 max-w-70 rounded-xl shadow-xl overflow-hidden animate-fadeIn"
         style={{
           background: theme.surface,
           border: `1px solid ${theme.border}`,
@@ -119,7 +119,7 @@ const ProfilePopup = ({
               className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 border-none cursor-pointer disabled:opacity-50"
               style={{
                 background: 'transparent',
-                color: '#000000',
+                color: theme.text,  // ✅ Fixed: Now using theme.text instead of hardcoded black
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = theme.subtle;
