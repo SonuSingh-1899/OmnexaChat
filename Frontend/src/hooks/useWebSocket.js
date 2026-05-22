@@ -10,11 +10,13 @@ const useWebSocket = ({
   selectedUserEmail,
   onMessageReceived,
   onUserLastMessageUpdate,
+  onReadReceipt,
 }) => {
   const stompClientRef = useRef(null);
   const selectedUserEmailRef = useRef(selectedUserEmail);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onUserLastMessageUpdateRef = useRef(onUserLastMessageUpdate);
+  const onReadReceiptRef = useRef(onReadReceipt);
 
   useEffect(() => {
     selectedUserEmailRef.current = selectedUserEmail;
@@ -27,6 +29,41 @@ const useWebSocket = ({
   useEffect(() => {
     onUserLastMessageUpdateRef.current = onUserLastMessageUpdate;
   }, [onUserLastMessageUpdate]);
+
+  useEffect(() => {
+    onReadReceiptRef.current = onReadReceipt;
+  }, [onReadReceipt]);
+
+  // Function to send read receipt via WebSocket
+  const sendReadReceipt = useCallback((senderEmail, messageId = null) => {
+    const client = stompClientRef.current;
+    if (!client || !client.connected || !currentUserEmail) {
+      console.log('Cannot send read receipt - not connected');
+      return false;
+    }
+
+    const receipt = {
+      type: 'READ_RECEIPT',
+      reader: currentUserEmail,
+      sender: senderEmail,
+      timestamp: new Date().toISOString(),
+      ...(messageId && { messageId })
+    };
+
+    const destination = `/app/mark.read/${senderEmail}`;
+    console.log('Sending read receipt to:', destination, receipt);
+    
+    try {
+      client.publish({
+        destination,
+        body: JSON.stringify(receipt)
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to send read receipt:', error);
+      return false;
+    }
+  }, [currentUserEmail]);
 
   const connect = useCallback(() => {
     const token = session.getToken();
@@ -42,13 +79,21 @@ const useWebSocket = ({
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       onConnect: () => {
+        console.log('WebSocket connected for:', currentUserEmail);
+        
         client.subscribe(buildInboxDestination(currentUserEmail), (frame) => {
           try {
-            const message = JSON.parse(frame.body);
-            onUserLastMessageUpdateRef.current(message);
-
-            if (message.senderEmail === selectedUserEmailRef.current) {
-              onMessageReceivedRef.current(message);
+            const data = JSON.parse(frame.body);
+            console.log('WebSocket message received:', data);
+            
+            if (data.type === 'READ_RECEIPT' || data.type === 'MESSAGE_READ') {
+              console.log('Read receipt detected, calling handler');
+              onReadReceiptRef.current?.(data);
+            } else {
+              onUserLastMessageUpdateRef.current(data);
+              if (data.senderEmail === selectedUserEmailRef.current) {
+                onMessageReceivedRef.current(data);
+              }
             }
           } catch (err) {
             console.error('Failed to parse WS message:', err);
@@ -62,6 +107,7 @@ const useWebSocket = ({
         console.error('WS error:', err);
       },
       onDisconnect: () => {
+        console.log('WebSocket disconnected');
       },
     });
 
@@ -81,6 +127,9 @@ const useWebSocket = ({
       stompClientRef.current = null;
     };
   }, [connect, currentUserEmail]);
+
+  // Return sendReadReceipt function for use in components
+  return { sendReadReceipt };
 };
 
 export default useWebSocket;

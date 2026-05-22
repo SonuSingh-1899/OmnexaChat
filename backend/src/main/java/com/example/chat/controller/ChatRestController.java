@@ -1,6 +1,8 @@
 package com.example.chat.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.exception.BusinessException;
 import com.example.chat.service.ChatService;
+import com.example.chat.service.ReadReceiptService;
 import com.example.chat.service.UserProfileService;
 
 import jakarta.validation.Valid;
@@ -30,6 +33,9 @@ public class ChatRestController {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private ReadReceiptService readReceiptService;
 
     @Autowired
     private UserProfileService userProfileService;
@@ -84,4 +90,34 @@ public class ChatRestController {
     private String buildInboxDestination(String email) {
         return "/topic/messages/" + email;
     }
+
+        @PostMapping("/read/{senderEmail}")
+    public ResponseEntity<Map<String, Object>> markMessagesAsRead(@PathVariable String senderEmail) {
+        long count = readReceiptService.markMessagesAsRead(senderEmail);
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", count + " messages marked as read");
+        response.put("count", count);
+        return ResponseEntity.ok(response);
+    }
+    
+    // Mark a single message as read
+    @PostMapping("/messages/{messageId}/read")
+    public ResponseEntity<Map<String, String>> markSingleMessageAsRead(@PathVariable Long messageId) {
+        readReceiptService.markSingleMessageAsRead(messageId);
+        return ResponseEntity.ok(Map.of("message", "Message marked as read"));
+    }
+    
+    // Get total unread count
+    @GetMapping("/unread/count")
+    public ResponseEntity<Map<String, Long>> getUnreadCount() {
+        long count = readReceiptService.getUnreadCount();
+        return ResponseEntity.ok(Map.of("unreadCount", count));
+    }
+    
+    // Get unread counts grouped by sender
+    @GetMapping("/unread/by-sender")
+    public ResponseEntity<Map<String, Long>> getUnreadCountsBySender() {
+        return ResponseEntity.ok(readReceiptService.getUnreadCountsBySender());
+    }
+
 }

@@ -1,4 +1,4 @@
-// ChatSidebar.jsx
+// ChatSidebar.jsx (Updated)
 import { useState, useRef } from 'react';
 import ProfilePopup from './ProfilePopup';
 
@@ -77,6 +77,32 @@ const SectionTitle = ({ children, theme }) => (
   </p>
 );
 
+const getDisplayMessageWithCount = (chatUser) => {
+  // Case 1: Unread messages hain
+  if (chatUser.unreadCount > 0) {
+    // Multiple unread - count dikhao, last message nahi
+    if (chatUser.unreadCount > 1) {
+      return `${chatUser.unreadCount} new messages`;
+    }
+    // Exactly 1 unread - last message dikhao (truncated)
+    if (chatUser.lastMessage) {
+      const message = chatUser.lastMessage;
+      return message.length > 28 ? message.slice(0, 28) + '...' : message;
+    }
+    return '1 new message';
+  }
+
+  // Case 2: No unread - last message dikhao agar hai
+  // "Ready to chat" tabhi show hoga jab koi bhi message hi na ho kabhi
+  if (chatUser.lastMessage) {
+    const message = chatUser.lastMessage;
+    return message.length > 32 ? message.slice(0, 32) + '...' : message;
+  }
+
+  // Case 3: Bilkul naya connection, koi message nahi
+  return 'Ready to chat';
+};
+
 const UserCard = ({
   chatUser,
   theme,
@@ -97,6 +123,9 @@ const UserCard = ({
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const longPressTimer = useRef(null);
   const isLongPress = useRef(false);
+
+  const displayMessage = getDisplayMessageWithCount(chatUser);
+  const hasUnread = chatUser.unreadCount > 0;
 
   const handleTouchStart = (e) => {
     isLongPress.current = false;
@@ -149,27 +178,74 @@ const UserCard = ({
           }
         }}
       >
+        {/* ✅ FIX 3: Avatar - green dot completely removed */}
         <div
-          className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold"
+          className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold relative"
           style={{ background: theme.pageBackground, color: theme.text }}
         >
           {getUserInitial(chatUser.name)}
+          {/* Green online dot removed */}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline gap-2">
-            <p className="m-0 font-semibold truncate" style={{ color: theme.text }}>
+            <p
+              className="m-0 truncate"
+              style={{
+                color: theme.text,
+                fontWeight: hasUnread ? '700' : '600',
+              }}
+            >
               {chatUser.name}
             </p>
-            {trailingText && (
-              <span className="text-[10px] shrink-0" style={{ color: theme.muted }}>
-                {trailingText}
+            <div className="flex items-center gap-1 shrink-0">
+              {trailingText && (
+                <span
+                  className="text-[10px] whitespace-nowrap"
+                  style={{
+                    color: hasUnread ? theme.accent : theme.muted,
+                    fontWeight: hasUnread ? '600' : '400',
+                  }}
+                >
+                  {trailingText}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {/* ✅ FIX 1 & 2: Subtitle with unread badge */}
+            <p
+              className="m-0 text-xs truncate flex-1"
+              style={{
+                color: hasUnread ? theme.accent : theme.muted,
+                fontWeight: hasUnread ? '600' : '400',
+              }}
+            >
+              {displayMessage}
+            </p>
+
+            {/* ✅ Unread count badge - sirf tab dikhega jab unreadCount > 1 ho */}
+            {hasUnread && chatUser.unreadCount > 1 && (
+              <span
+                className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+                style={{
+                  background: theme.accent,
+                  color: theme.accentText,
+                }}
+              >
+                {chatUser.unreadCount}
               </span>
             )}
+
+            {/* Single unread dot */}
+            {hasUnread && chatUser.unreadCount === 1 && (
+              <span
+                className="shrink-0 w-2 h-2 rounded-full"
+                style={{ background: theme.accent }}
+              />
+            )}
           </div>
-          <p className="m-0 mt-1 text-[13px] truncate" style={{ color: theme.muted }}>
-            {subtitle}
-          </p>
         </div>
 
         {actionConfig && !chatUser.isConnected && (
@@ -257,6 +333,8 @@ const ChatSidebar = ({
     }
   };
 
+  const totalUnread = users.reduce((sum, user) => sum + (user.unreadCount || 0), 0);
+
   return (
     <div
       className={`sidebar w-80 flex flex-col min-h-0 ${
@@ -268,6 +346,19 @@ const ChatSidebar = ({
         boxShadow: `0 18px 42px ${theme.shadow}`,
       }}
     >
+      {/* Total unread summary */}
+      {!showSearchSection && totalUnread > 0 && (
+        <div
+          className="mx-3 mt-2 px-3 py-2 rounded-lg text-center text-xs font-medium"
+          style={{
+            background: `rgba(59, 130, 246, 0.1)`,
+            color: theme.accent,
+          }}
+        >
+          {totalUnread} unread message{totalUnread > 1 ? 's' : ''}
+        </div>
+      )}
+
       <div
         className="flex-1 overflow-y-auto px-3 py-2.5"
         style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}
@@ -298,7 +389,18 @@ const ChatSidebar = ({
 
         <div className={showSearchSection ? 'mb-4' : ''}>
           <SectionTitle theme={theme}>
-            {showSearchSection ? 'Connected' : 'Connected Users'}
+            {showSearchSection ? 'Connected' : 'Chats'}
+            {!showSearchSection && totalUnread > 0 && (
+              <span
+                className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                style={{
+                  background: theme.accent,
+                  color: theme.accentText,
+                }}
+              >
+                {totalUnread}
+              </span>
+            )}
           </SectionTitle>
 
           {connectedMatches.length === 0 && !showSearchSection ? (

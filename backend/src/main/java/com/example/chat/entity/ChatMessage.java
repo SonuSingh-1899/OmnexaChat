@@ -29,6 +29,24 @@ public class ChatMessage {
     @Column(columnDefinition = "TEXT")
     private String content;
     private String roomId;
+
+    private String isread; // Keep for backward compatibility, but we'll enhance
+    
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+    
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+    
+    // Helper methods
+    public boolean isRead() {
+        return "READ".equalsIgnoreCase(isread) || readAt != null;
+    }
+    
+    public void markAsRead() {
+        this.isread = "READ";
+        this.readAt = LocalDateTime.now();
+    }
     
     @Enumerated(EnumType.STRING)
     private MessageType type;

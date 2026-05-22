@@ -154,6 +154,30 @@ export const chatApi = {
     const { data } = await api.post('/api/chat/messages', payload);
     return data;
   },
+
+  // lib/api.js - Add these methods to chatApi
+  getConversation: async (otherEmail) => {
+    const encodedEmail = encodeURIComponent(otherEmail);
+    const { data } = await api.get(`/api/chat/conversation/${encodedEmail}`);
+    return data;
+  },
+  sendMessage: async (payload) => {
+    const { data } = await api.post('/api/chat/messages', payload);
+    return data;
+  },
+  // Add these new methods
+  markAsRead: async (senderEmail) => {
+    const { data } = await api.post(`/api/chat/read/${senderEmail}`);
+    return data;
+  },
+  getUnreadCount: async () => {
+    const { data } = await api.get('/api/chat/unread/count');
+    return data;
+  },
+  getUnreadCountsBySender: async () => {
+    const { data } = await api.get('/api/chat/unread/by-sender');
+    return data;
+  },
 };
 
 export const session = {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
@@ -16,17 +16,7 @@ const sortMessagesByTime = (messageList) =>
       getTimestampValue(firstMessage.timestamp) - getTimestampValue(secondMessage.timestamp)
   );
 
-const sortUsersByRecentActivity = (userList) =>
-  [...userList].sort((firstUser, secondUser) => {
-    const timestampDifference =
-      getTimestampValue(secondUser.lastMessageTime) - getTimestampValue(firstUser.lastMessageTime);
-
-    if (timestampDifference !== 0) {
-      return timestampDifference;
-    }
-
-    return (firstUser.name || '').localeCompare(secondUser.name || '');
-  });
+// ❌ REMOVED: sortUsersByRecentActivity - Backend will handle sorting now
 
 const addMessageIfMissing = (messageList, incomingMessage) => {
   const messageAlreadyExists = messageList.some((message) => message.id === incomingMessage.id);
@@ -38,13 +28,12 @@ const addMessageIfMissing = (messageList, incomingMessage) => {
   return sortMessagesByTime([...messageList, incomingMessage]);
 };
 
+// ✅ Updated: No sorting here - just update the user
 const updateUserPreview = (userList, email, content, timestamp) =>
-  sortUsersByRecentActivity(
-    userList.map((chatUser) =>
-      chatUser.email === email
-        ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
-        : chatUser
-    )
+  userList.map((chatUser) =>
+    chatUser.email === email
+      ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
+      : chatUser
   );
 
 const findUserByEmail = (email, ...userCollections) => {
@@ -73,6 +62,11 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [actionUserId, setActionUserId] = useState(null);
+  
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [unreadTotal, setUnreadTotal] = useState(0);
+  
+  const prevUnreadCountsRef = useRef({});
 
   const refreshConnectedUsers = useCallback(async () => {
     if (!user?.email) {
@@ -85,7 +79,8 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
         profileApi.listIncomingRequests(),
       ]);
 
-      setConnectedUsers(sortUsersByRecentActivity(nextConnectedUsers));
+      // ✅ NO SORTING - Backend already returns sorted data
+      setConnectedUsers(nextConnectedUsers);
       setIncomingRequests(nextIncomingRequests);
     } catch (error) {
       console.error('Failed to fetch connection data:', error);
@@ -117,21 +112,187 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     }
   }, [searchQuery, user?.email]);
 
+  const fetchUnreadCounts = useCallback(async () => {
+    if (!user?.email) return;
+    
+    try {
+      const [totalResponse, bySenderResponse] = await Promise.all([
+        chatApi.getUnreadCount(),
+        chatApi.getUnreadCountsBySender()
+      ]);
+      
+      setUnreadTotal(totalResponse.unreadCount || 0);
+      setUnreadCounts(bySenderResponse || {});
+    } catch (error) {
+      console.error('Failed to fetch unread counts:', error);
+    }
+  }, [user?.email]);
+
+  
+const handleIncomingMessage = useCallback((incomingMessage) => {
+  setMessages((currentMessages) => addMessageIfMissing(currentMessages, incomingMessage));
+  
+  const isFromSelectedUser = incomingMessage.senderEmail === selectedUser?.email;
+  
+  // ✅ CRITICAL FIX: Update connectedUsers with lastMessage and unreadCount
+  setConnectedUsers((currentUsers) =>
+    currentUsers.map((user) =>
+      user.email === incomingMessage.senderEmail
+        ? {
+            ...user,
+            lastMessage: incomingMessage.content,
+            lastMessageTime: incomingMessage.timestamp,
+            unreadCount: isFromSelectedUser 
+              ? (user.unreadCount || 0)
+              : (user.unreadCount || 0) + 1
+          }
+        : user
+    )
+  );
+  
+  // Update selected user's preview
+  if (selectedUser?.email === incomingMessage.senderEmail) {
+    setSelectedUser((current) => ({
+      ...current,
+      lastMessage: incomingMessage.content,
+      lastMessageTime: incomingMessage.timestamp,
+    }));
+  }
+  
+  // Update unread counts
+  if (!isFromSelectedUser) {
+    setUnreadCounts((prev) => ({
+      ...prev,
+      [incomingMessage.senderEmail]: (prev[incomingMessage.senderEmail] || 0) + 1,
+    }));
+    setUnreadTotal((prev) => prev + 1);
+  } else if (selectedUser?.isConnected) {
+    setTimeout(() => {
+      markConversationAsRead(incomingMessage.senderEmail);
+    }, 100);
+  }
+}, [selectedUser?.email, selectedUser?.isConnected]);
+
+const handleUserPreviewUpdate = useCallback((incomingMessage) => {
+  // ✅ Also update connectedUsers here for WebSocket messages
+  setConnectedUsers((currentUsers) =>
+    currentUsers.map((user) =>
+      user.email === incomingMessage.senderEmail
+        ? {
+            ...user,
+            lastMessage: incomingMessage.content,
+            lastMessageTime: incomingMessage.timestamp,
+          }
+        : user
+    )
+  );
+
+  setSelectedUser((currentSelectedUser) => {
+    const isActiveConversation =
+      currentSelectedUser?.email === incomingMessage.senderEmail ||
+      currentSelectedUser?.email === incomingMessage.receiverEmail;
+
+    if (!isActiveConversation) {
+      return currentSelectedUser;
+    }
+
+    return {
+      ...currentSelectedUser,
+      lastMessage: incomingMessage.content,
+      lastMessageTime: incomingMessage.timestamp,
+    };
+  });
+}, []);
+
+  const handleReadReceipt = useCallback((receipt) => {
+    console.log('Received read receipt:', receipt);
+    
+    if (receipt.type === 'READ_RECEIPT') {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) => {
+          if (message.senderEmail === user?.email && 
+              message.receiverEmail === receipt.reader &&
+              message.isread !== 'READ') {
+            return { 
+              ...message, 
+              isread: 'READ', 
+              readAt: receipt.timestamp 
+            };
+          }
+          return message;
+        })
+      );
+      
+      setUnreadCounts(prev => ({
+        ...prev,
+        [receipt.reader]: 0
+      }));
+      
+    } else if (receipt.type === 'MESSAGE_READ') {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === receipt.messageId
+            ? { ...message, isread: 'READ', readAt: receipt.readAt }
+            : message
+        )
+      );
+    }
+  }, [user?.email]);
+
+  // ========== WebSocket Hook ==========
+  
+  const { sendReadReceipt } = useWebSocket({
+    currentUserEmail: user?.email,
+    selectedUserEmail: selectedUser?.email || '',
+    onMessageReceived: handleIncomingMessage,
+    onUserLastMessageUpdate: handleUserPreviewUpdate,
+    onReadReceipt: handleReadReceipt,
+  });
+
+  // ========== markConversationAsRead ==========
+  
+  const markConversationAsRead = useCallback(async (senderEmail) => {
+    if (!senderEmail) return;
+    
+    try {
+      sendReadReceipt?.(senderEmail);
+      await chatApi.markAsRead(senderEmail);
+      
+      setUnreadCounts(prev => ({ ...prev, [senderEmail]: 0 }));
+      setUnreadTotal(prev => Math.max(0, prev - (unreadCounts[senderEmail] || 0)));
+      
+      // ✅ Update unreadCount in connectedUsers - NO SORTING
+      setConnectedUsers(currentUsers => {
+        return currentUsers.map(user =>
+          user.email === senderEmail
+            ? { ...user, unreadCount: 0 }
+            : user
+        );
+      });
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error);
+    }
+  }, [unreadCounts, sendReadReceipt]);
+
+  // ========== useEffect Hooks ==========
+  
   useEffect(() => {
     if (!user?.email) {
       return undefined;
     }
 
     void refreshConnectedUsers();
+    void fetchUnreadCounts();
 
     const refreshTimer = window.setInterval(() => {
       void refreshConnectedUsers();
+      void fetchUnreadCounts();
     }, USER_REFRESH_INTERVAL);
 
     return () => {
       window.clearInterval(refreshTimer);
     };
-  }, [refreshConnectedUsers, user?.email]);
+  }, [refreshConnectedUsers, fetchUnreadCounts, user?.email]);
 
   useEffect(() => {
     if (!user?.email) {
@@ -171,6 +332,26 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     });
   }, [connectedUsers, incomingRequests, searchResults]);
 
+  // ✅ Updated: Update unreadCounts without sorting
+  useEffect(() => {
+    if (connectedUsers.length > 0 && Object.keys(unreadCounts).length > 0) {
+      const hasChanges = Object.keys(unreadCounts).some(
+        email => unreadCounts[email] !== (prevUnreadCountsRef.current[email] || 0)
+      );
+      
+      if (hasChanges) {
+        setConnectedUsers(currentUsers => {
+          return currentUsers.map(user => ({
+            ...user,
+            unreadCount: unreadCounts[user.email] || 0
+          }));
+          // ✅ NO SORTING HERE
+        });
+        prevUnreadCountsRef.current = { ...unreadCounts };
+      }
+    }
+  }, [unreadCounts, connectedUsers]);
+
   const loadConversation = useCallback(async (chatUser) => {
     if (!chatUser?.email || !chatUser.isConnected) {
       setMessages([]);
@@ -198,54 +379,20 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
 
     setSelectedUser(chatUser);
     await loadConversation(chatUser);
-  }, [loadConversation]);
+    
+    if (chatUser.isConnected && chatUser.email) {
+      await markConversationAsRead(chatUser.email);
+    }
+  }, [loadConversation, markConversationAsRead]);
 
   const clearSelectedUser = useCallback(() => {
     setSelectedUser(null);
     setMessages([]);
   }, []);
 
-  const handleIncomingMessage = useCallback((incomingMessage) => {
-    setMessages((currentMessages) => addMessageIfMissing(currentMessages, incomingMessage));
-  }, []);
-
-  const handleUserPreviewUpdate = useCallback((incomingMessage) => {
-    setConnectedUsers((currentUsers) =>
-      updateUserPreview(
-        currentUsers,
-        incomingMessage.senderEmail,
-        incomingMessage.content,
-        incomingMessage.timestamp
-      )
-    );
-
-    setSelectedUser((currentSelectedUser) => {
-      const isActiveConversation =
-        currentSelectedUser?.email === incomingMessage.senderEmail ||
-        currentSelectedUser?.email === incomingMessage.receiverEmail;
-
-      if (!isActiveConversation) {
-        return currentSelectedUser;
-      }
-
-      return {
-        ...currentSelectedUser,
-        lastMessage: incomingMessage.content,
-        lastMessageTime: incomingMessage.timestamp,
-      };
-    });
-  }, []);
-
-  useWebSocket({
-    currentUserEmail: user?.email,
-    selectedUserEmail: selectedUser?.email || '',
-    onMessageReceived: handleIncomingMessage,
-    onUserLastMessageUpdate: handleUserPreviewUpdate,
-  });
-
   const syncAfterRelationshipChange = useCallback(async () => {
-    await Promise.all([refreshConnectedUsers(), refreshSearchResults()]);
-  }, [refreshConnectedUsers, refreshSearchResults]);
+    await Promise.all([refreshConnectedUsers(), refreshSearchResults(), fetchUnreadCounts()]);
+  }, [refreshConnectedUsers, refreshSearchResults, fetchUnreadCounts]);
 
   const sendFollowRequest = useCallback(async (chatUser) => {
     if (!chatUser?.id || actionUserId) {
@@ -296,8 +443,6 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       setActionUserId(null);
     }
   }, [actionUserId, onConnectionChange, selectUser, syncAfterRelationshipChange]);
-
-  // hooks/useChat.js - Add these functions at the end, before the return statement
 
   const unfollowUser = useCallback(async (chatUser) => {
     if (!chatUser?.id || actionUserId) {
@@ -370,7 +515,6 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       setActionUserId(null);
     }
   }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
-
 
   const sendMessage = useCallback(async (event) => {
     event.preventDefault();
@@ -447,6 +591,8 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     sending: sendingMessage,
     searchingUsers,
     actionUserId,
+    unreadCounts,
+    unreadTotal,
     selectUser,
     clearSelectedUser,
     sendMessage,
@@ -455,5 +601,6 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     unfollowUser,
     rejectFollowRequest,
     cancelSentRequest,
+    markConversationAsRead,
   };
 }

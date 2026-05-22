@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,7 @@ import com.example.chat.entity.User;
 import com.example.chat.entity.UserConnection;
 import com.example.chat.entity.UserConnection.ConnectionStatus;
 import com.example.chat.exception.BusinessException;
+import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.UserConnectionRepository;
 import com.example.chat.repository.UserRepository;
 
@@ -55,6 +57,14 @@ public class UserProfileService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    public LocalDateTime getLatestMessageTime(String currentUserEmail, String otherEmail) {
+        return chatMessageRepository.findLatestMessageTimeBetween(currentUserEmail, otherEmail);
+    }
+
+    
     private record RelationshipFlags(boolean connected, boolean requestSent, boolean requestReceived) {
         private static RelationshipFlags none() {
             return new RelationshipFlags(false, false, false);
@@ -210,21 +220,30 @@ public class UserProfileService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserProfileResponse> getConnectedUsers() {
-        User currentUser = getCurrentUser();
-        Map<Long, RelationshipFlags> relationshipMap = buildRelationshipMap(currentUser);
-
-        return userRepository.findAll().stream()
-            .filter(User::isVerified)
-            .filter(user -> !user.getEmail().equalsIgnoreCase(currentUser.getEmail()))
-            .filter(user -> relationshipMap.getOrDefault(user.getId(), RelationshipFlags.none()).connected())
-            .map(user -> convertToResponse(
-                user,
-                relationshipMap.getOrDefault(user.getId(), RelationshipFlags.none()),
-                false
-            ))
-            .toList();
-    }
+public List<UserProfileResponse> getConnectedUsers() {
+    User currentUser = getCurrentUser();
+    Map<Long, RelationshipFlags> relationshipMap = buildRelationshipMap(currentUser);
+    
+    List<UserProfileResponse> users = userRepository.findAll().stream()
+        .filter(User::isVerified)
+        .filter(user -> !user.getEmail().equalsIgnoreCase(currentUser.getEmail()))
+        .filter(user -> relationshipMap.getOrDefault(user.getId(), RelationshipFlags.none()).connected())
+        .map(user -> convertToResponse(user, relationshipMap.getOrDefault(user.getId(), RelationshipFlags.none()), false))
+        .collect(Collectors.toList());
+    
+    // ✅ YAHAN CALL KARO getLatestMessageTime() METHOD KO
+    users.sort((u1, u2) -> {
+        LocalDateTime t1 = getLatestMessageTime(currentUser.getEmail(), u1.getEmail());
+        LocalDateTime t2 = getLatestMessageTime(currentUser.getEmail(), u2.getEmail());
+        
+        if (t1 == null && t2 == null) return 0;
+        if (t1 == null) return 1;
+        if (t2 == null) return -1;
+        return t2.compareTo(t1);
+    });
+    
+    return users;
+}
 
     @Transactional(readOnly = true)
     public List<UserProfileResponse> searchUsers(String query) {

@@ -1,0 +1,104 @@
+// Create new file: ReadReceiptService.java
+package com.example.chat.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.chat.entity.ChatMessage;
+import com.example.chat.repository.ChatMessageRepository;
+import com.example.chat.exception.BusinessException;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class ReadReceiptService {
+    
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+    
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+    
+    @Autowired
+    private UserProfileService userProfileService;
+    
+    @Transactional
+    public long markMessagesAsRead(String senderEmail) {
+        String currentUserEmail = userProfileService.getCurrentUserEmail();
+        
+        // Verify users are connected
+        userProfileService.assertUsersConnected(senderEmail);
+        
+        // Mark messages as read
+        int updatedCount = chatMessageRepository.markConversationAsRead(senderEmail, currentUserEmail);
+        
+        // Send read receipt notification via WebSocket
+        if (updatedCount > 0) {
+            sendReadReceipt(senderEmail, currentUserEmail, updatedCount);
+        }
+        
+        return updatedCount;
+    }
+    
+    @Transactional
+    public void markSingleMessageAsRead(Long messageId) {
+        ChatMessage message = chatMessageRepository.findById(messageId)
+            .orElseThrow(() -> new BusinessException("Message not found"));
+        
+        String currentUserEmail = userProfileService.getCurrentUserEmail();
+        
+        // Only receiver can mark as read
+        if (!message.getReceiverEmail().equals(currentUserEmail)) {
+            throw new BusinessException("You can only mark messages sent to you as read");
+        }
+        
+        if (!message.isRead()) {
+            message.markAsRead();
+            chatMessageRepository.save(message);
+            
+            // Send read receipt for this specific message
+            sendSingleReadReceipt(message.getSenderEmail(), currentUserEmail, messageId);
+        }
+    }
+    
+    public long getUnreadCount() {
+        String currentUserEmail = userProfileService.getCurrentUserEmail();
+        return chatMessageRepository.countUnreadMessages(currentUserEmail);
+    }
+    
+    public Map<String, Long> getUnreadCountsBySender() {
+        String currentUserEmail = userProfileService.getCurrentUserEmail();
+        List<ChatMessage> unreadMessages = chatMessageRepository.findUnreadMessagesFromSender(null, currentUserEmail);
+        
+        Map<String, Long> unreadCounts = new HashMap<>();
+        for (ChatMessage message : unreadMessages) {
+            unreadCounts.merge(message.getSenderEmail(), 1L, Long::sum);
+        }
+        return unreadCounts;
+    }
+    
+    private void sendReadReceipt(String senderEmail, String readerEmail, int count) {
+        Map<String, Object> receipt = new HashMap<>();
+        receipt.put("type", "READ_RECEIPT");
+        receipt.put("reader", readerEmail);
+        receipt.put("readBy", readerEmail);
+        receipt.put("messageCount", count);
+        receipt.put("timestamp", java.time.LocalDateTime.now().toString());
+        
+        messagingTemplate.convertAndSend("/topic/messages/" + senderEmail, receipt);
+    }
+    
+    private void sendSingleReadReceipt(String senderEmail, String readerEmail, Long messageId) {
+        Map<String, Object> receipt = new HashMap<>();
+        receipt.put("type", "MESSAGE_READ");
+        receipt.put("messageId", messageId);
+        receipt.put("reader", readerEmail);
+        receipt.put("readAt", java.time.LocalDateTime.now().toString());
+        
+        messagingTemplate.convertAndSend("/topic/messages/" + senderEmail, receipt);
+    }
+}

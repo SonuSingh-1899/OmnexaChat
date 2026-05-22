@@ -237,6 +237,8 @@ const Dashboard = ({
     sending,
     searchingUsers,
     actionUserId,
+    unreadCounts,
+    unreadTotal,
     selectUser,
     clearSelectedUser,
     sendMessage,
@@ -245,6 +247,7 @@ const Dashboard = ({
     unfollowUser,
     rejectFollowRequest,
     cancelSentRequest,
+    markConversationAsRead,
   } = useChat({
     user,
     searchQuery: effectiveSearchQuery,
@@ -407,30 +410,24 @@ const Dashboard = ({
             }`}
             style={chatWindowStyle(theme)}
           >
-            <ChatWindow
-              theme={theme}
-              selectedUser={selectedUser}
-              messages={messages}
-              newMessage={newMessage}
-              loading={loading}
-              sending={sending}
-              currentUserEmail={user?.email}
-              onNavigateToDashboard={() => {
-                window.location.href = '/dashboard';
-              }}
-              actionUserId={actionUserId}
-              isCompactMobile={isCompactMobile}
-              onNewMessageChange={setNewMessage}
-              onSendMessage={sendMessage}
-              onSendRequest={(chatUser) => {
-                void sendFollowRequest(chatUser);
-              }}
-              onAcceptRequest={(chatUser) => {
-                void acceptFollowRequest(chatUser, { openChat: true });
-              }}
-              onUnfollow={unfollowUser}
-              onBack={clearSelectedUser}
-            />
+          <ChatWindow
+            theme={theme}
+            selectedUser={selectedUser}
+            messages={messages}
+            newMessage={newMessage}
+            loading={loading}
+            sending={sending}
+            currentUserEmail={user?.email}
+            actionUserId={actionUserId}
+            isCompactMobile={isCompactMobile}
+            onNewMessageChange={setNewMessage}
+            onSendMessage={sendMessage}
+            onSendRequest={sendFollowRequest}
+            onAcceptRequest={acceptFollowRequest}
+            onUnfollow={unfollowUser}
+            onBack={clearSelectedUser}
+            onMarkAsRead={markConversationAsRead}  
+          />
           </div>
         )}
       </div>

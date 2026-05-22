@@ -23,4 +23,35 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     @Transactional
     @Query("DELETE FROM ChatMessage m WHERE m.timestamp <= :cutoffDate")
     int deleteOldMessages(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+
+    // Mark all messages in a conversation as read
+    @Modifying
+    @Transactional
+    @Query("UPDATE ChatMessage m SET m.isread = 'READ', m.readAt = CURRENT_TIMESTAMP " +
+           "WHERE m.senderEmail = :senderEmail " +
+           "AND m.receiverEmail = :receiverEmail " +
+           "AND (m.isread IS NULL OR m.isread != 'READ')")
+    int markConversationAsRead(@Param("senderEmail") String senderEmail, 
+                               @Param("receiverEmail") String receiverEmail);
+    
+    // Get unread count for a user
+    @Query("SELECT COUNT(m) FROM ChatMessage m " +
+           "WHERE m.receiverEmail = :userEmail " +
+           "AND (m.isread IS NULL OR m.isread != 'READ')")
+    long countUnreadMessages(@Param("userEmail") String userEmail);
+    
+    // Get unread messages from a specific sender
+    @Query("SELECT m FROM ChatMessage m " +
+           "WHERE m.receiverEmail = :receiverEmail " +
+           "AND m.senderEmail = :senderEmail " +
+           "AND (m.isread IS NULL OR m.isread != 'READ')")
+    List<ChatMessage> findUnreadMessagesFromSender(@Param("senderEmail") String senderEmail,
+                                                    @Param("receiverEmail") String receiverEmail);
+
+        @Query("SELECT MAX(m.timestamp) FROM ChatMessage m " +
+       "WHERE (m.senderEmail = :email1 AND m.receiverEmail = :email2) " +
+       "OR (m.senderEmail = :email2 AND m.receiverEmail = :email1)")
+LocalDateTime findLatestMessageTimeBetween(@Param("email1") String email1, 
+                                            @Param("email2") String email2);
 }
