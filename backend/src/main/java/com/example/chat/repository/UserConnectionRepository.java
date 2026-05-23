@@ -15,8 +15,11 @@ public interface UserConnectionRepository extends JpaRepository<UserConnection, 
 
     List<UserConnection> findByRequesterOrRecipient(User requester, User recipient);
 
+    // who sent requeest me 
     List<UserConnection> findByRecipientAndStatus(User recipient, ConnectionStatus status);
 
+
+    // Find relationship between two specific users (most important!)
     @Query("""
         SELECT connection
         FROM UserConnection connection
@@ -30,6 +33,8 @@ public interface UserConnectionRepository extends JpaRepository<UserConnection, 
         @Param("secondUser") User secondUser
     );
 
+
+    // Count total connections (friends) of a user
     @Query("""
         SELECT COUNT(connection)
         FROM UserConnection connection

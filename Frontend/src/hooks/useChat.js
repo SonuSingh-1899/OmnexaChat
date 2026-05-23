@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
@@ -55,14 +55,39 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [actionUserId, setActionUserId] = useState(null);
-  
   const [unreadCounts, setUnreadCounts] = useState({});
   const [unreadTotal, setUnreadTotal] = useState(0);
-  
-  const prevUnreadCountsRef = useRef({});
 
-  // Reference for sendReadReceipt (will be set after WebSocket initializes)
-  const sendReadReceiptRef = useRef(null);
+  const applyUnreadCountUpdate = useCallback((senderEmail, nextCount) => {
+    if (!senderEmail) {
+      return;
+    }
+
+    const normalizedCount = Math.max(0, Number(nextCount) || 0);
+
+    setUnreadCounts((prev) => {
+      const previousCount = prev[senderEmail] || 0;
+
+      if (previousCount === normalizedCount) {
+        return prev;
+      }
+
+      setUnreadTotal((total) => Math.max(0, total - previousCount + normalizedCount));
+
+      return {
+        ...prev,
+        [senderEmail]: normalizedCount,
+      };
+    });
+
+    setConnectedUsers((currentUsers) =>
+      currentUsers.map((chatUser) =>
+        chatUser.email === senderEmail
+          ? { ...chatUser, unreadCount: normalizedCount }
+          : chatUser
+      )
+    );
+  }, []);
 
   const refreshConnectedUsers = useCallback(async () => {
     if (!user?.email) return;
@@ -103,94 +128,81 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     try {
       const [totalResponse, bySenderResponse] = await Promise.all([
         chatApi.getUnreadCount(),
-        chatApi.getUnreadCountsBySender()
+        chatApi.getUnreadCountsBySender(),
       ]);
+      const nextUnreadCounts = bySenderResponse || {};
       setUnreadTotal(totalResponse.unreadCount || 0);
-      setUnreadCounts(bySenderResponse || {});
+      setUnreadCounts(nextUnreadCounts);
+      setConnectedUsers((currentUsers) =>
+        currentUsers.map((chatUser) => ({
+          ...chatUser,
+          unreadCount: nextUnreadCounts[chatUser.email] || 0,
+        }))
+      );
     } catch (error) {
       console.error('Failed to fetch unread counts:', error);
     }
   }, [user?.email]);
 
-  // ========== UPDATED: markConversationAsRead - FAST VERSION ==========
   const markConversationAsRead = useCallback(async (senderEmail) => {
     if (!senderEmail) return;
-    
-    // Get current unread count for this sender
-    const currentUnread = unreadCounts[senderEmail] || 0;
-    if (currentUnread === 0) {
-      return;
-    }
-    
-    console.log(`📖 Marking conversation as read with ${senderEmail} (${currentUnread} messages)`);
-    
+
+    const fallbackUnread =
+      connectedUsers.find((chatUser) => chatUser.email === senderEmail)?.unreadCount || 0;
+    const currentUnread = unreadCounts[senderEmail] ?? fallbackUnread;
+
+    console.log(`Marking conversation as read with ${senderEmail} (${currentUnread} messages)`);
+
     try {
-      // OPTIMISTIC UPDATE: Update UI immediately for better UX
-      setUnreadCounts(prev => ({ 
-        ...prev, 
-        [senderEmail]: 0 
-      }));
-      
-      setUnreadTotal(prev => Math.max(0, prev - currentUnread));
-      
-      setConnectedUsers(currentUsers => 
-        currentUsers.map(user =>
-          user.email === senderEmail
-            ? { ...user, unreadCount: 0 }
-            : user
-        )
-      );
-      
-      // Send WebSocket read receipt (fast path)
-      if (sendReadReceiptRef.current) {
-        sendReadReceiptRef.current(senderEmail);
+      if (currentUnread > 0) {
+        applyUnreadCountUpdate(senderEmail, 0);
       }
-      
-      // Also call API to ensure database is updated (fallback)
-      await chatApi.markAsRead(senderEmail);
-      
-      console.log(`✅ Successfully marked messages from ${senderEmail} as read`);
-      
+
+      const response = await chatApi.markAsRead(senderEmail);
+
+      if (currentUnread === 0 && (response?.count || 0) > 0) {
+        setUnreadTotal((total) => Math.max(0, total - response.count));
+        setConnectedUsers((currentUsers) =>
+          currentUsers.map((chatUser) =>
+            chatUser.email === senderEmail
+              ? { ...chatUser, unreadCount: 0 }
+              : chatUser
+          )
+        );
+      }
+
+      console.log(`Successfully marked messages from ${senderEmail} as read`);
     } catch (error) {
       console.error('Failed to mark messages as read:', error);
-      // Rollback UI changes if everything failed
-      setUnreadCounts(prev => ({ 
-        ...prev, 
-        [senderEmail]: currentUnread 
-      }));
-      setUnreadTotal(prev => prev + currentUnread);
+      if (currentUnread > 0) {
+        applyUnreadCountUpdate(senderEmail, currentUnread);
+      }
     }
-  }, [unreadCounts]);
+  }, [applyUnreadCountUpdate, connectedUsers, unreadCounts]);
 
-  // ========== UPDATED: handleIncomingMessage - FAST VERSION ==========
   const handleIncomingMessage = useCallback((incomingMessage) => {
     setMessages((currentMessages) => addMessageIfMissing(currentMessages, incomingMessage));
-    
+
     const isFromSelectedUser = incomingMessage.senderEmail === selectedUser?.email;
     const isCurrentUserSender = incomingMessage.senderEmail === user?.email;
-    
-    // Don't process own messages as incoming
+
     if (isCurrentUserSender) return;
-    
+
     setConnectedUsers((currentUsers) =>
-      currentUsers.map((user) => {
-        if (user.email === incomingMessage.senderEmail) {
-          const newUnreadCount = isFromSelectedUser 
-            ? 0  // If chatting with this user, mark as read immediately
-            : (user.unreadCount || 0) + 1;
-          
-          return {
-            ...user,
-            lastMessage: incomingMessage.content,
-            lastMessageTime: incomingMessage.timestamp,
-            unreadCount: newUnreadCount
-          };
+      currentUsers.map((chatUser) => {
+        if (chatUser.email !== incomingMessage.senderEmail) {
+          return chatUser;
         }
-        return user;
+
+        return {
+          ...chatUser,
+          lastMessage: incomingMessage.content,
+          lastMessageTime: incomingMessage.timestamp,
+          unreadCount: isFromSelectedUser ? 0 : (chatUser.unreadCount || 0) + 1,
+        };
       })
     );
-    
-    // Update selected user preview
+
     if (selectedUser?.email === incomingMessage.senderEmail) {
       setSelectedUser((current) => ({
         ...current,
@@ -198,38 +210,36 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
         lastMessageTime: incomingMessage.timestamp,
       }));
     }
-    
-    // Update unread counts state
+
     if (!isFromSelectedUser) {
-      setUnreadCounts((prev) => {
-        const newCount = (prev[incomingMessage.senderEmail] || 0) + 1;
-        return {
-          ...prev,
-          [incomingMessage.senderEmail]: newCount,
-        };
-      });
-      setUnreadTotal((prev) => prev + 1);
-    } 
-    // If message is from selected user AND we're currently viewing their chat, mark as read immediately
-    else if (isFromSelectedUser && selectedUser?.isConnected) {
-      // Small delay to ensure UI updates first, then mark as read
+      applyUnreadCountUpdate(
+        incomingMessage.senderEmail,
+        (unreadCounts[incomingMessage.senderEmail] || 0) + 1
+      );
+    } else if (selectedUser?.isConnected) {
       setTimeout(() => {
         markConversationAsRead(incomingMessage.senderEmail);
       }, 100);
     }
-  }, [selectedUser?.email, selectedUser?.isConnected, markConversationAsRead, user?.email]);
+  }, [
+    applyUnreadCountUpdate,
+    markConversationAsRead,
+    selectedUser?.email,
+    selectedUser?.isConnected,
+    unreadCounts,
+    user?.email,
+  ]);
 
-  // ========== handleUserPreviewUpdate ==========
   const handleUserPreviewUpdate = useCallback((incomingMessage) => {
     setConnectedUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user.email === incomingMessage.senderEmail
+      currentUsers.map((chatUser) =>
+        chatUser.email === incomingMessage.senderEmail
           ? {
-              ...user,
+              ...chatUser,
               lastMessage: incomingMessage.content,
               lastMessageTime: incomingMessage.timestamp,
             }
-          : user
+          : chatUser
       )
     );
 
@@ -250,38 +260,26 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     });
   }, []);
 
-  // ========== UPDATED: handleReadReceipt - FAST VERSION ==========
   const handleReadReceipt = useCallback((receipt) => {
-    console.log('Received read receipt:', receipt);
-    
+    console.log('Received message status:', receipt);
+
     if (receipt.type === 'READ_RECEIPT') {
-      // Update unreadCount to 0 for the reader
-      if (receipt.reader) {
-        setConnectedUsers(currentUsers =>
-          currentUsers.map(user =>
-            user.email === receipt.reader
-              ? { ...user, unreadCount: 0 }
-              : user
-          )
-        );
-        setUnreadCounts(prev => ({ ...prev, [receipt.reader]: 0 }));
-      }
-      
       setMessages((currentMessages) =>
         currentMessages.map((message) => {
-          if (message.senderEmail === user?.email && 
-              message.receiverEmail === receipt.reader &&
-              message.isread !== 'READ') {
-            return { 
-              ...message, 
-              isread: 'READ', 
-              readAt: receipt.timestamp 
+          if (
+            message.senderEmail === user?.email &&
+            message.receiverEmail === receipt.reader &&
+            message.isread !== 'READ'
+          ) {
+            return {
+              ...message,
+              isread: 'READ',
+              readAt: receipt.timestamp,
             };
           }
           return message;
         })
       );
-      
     } else if (receipt.type === 'MESSAGE_READ') {
       setMessages((currentMessages) =>
         currentMessages.map((message) =>
@@ -290,28 +288,28 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
             : message
         )
       );
+    } else if (receipt.type === 'DELIVERED') {
+      setMessages((currentMessages) =>
+        currentMessages.map((message) =>
+          message.id === receipt.messageId
+            ? { ...message, deliveredAt: receipt.deliveredAt }
+            : message
+        )
+      );
     }
-  }, [user?.email]);
+  }, [applyUnreadCountUpdate, user?.email]);
 
-  // ========== WebSocket Hook ==========
-  const { sendReadReceipt } = useWebSocket({
+  useWebSocket({
     currentUserEmail: user?.email,
     selectedUserEmail: selectedUser?.email || '',
     onMessageReceived: handleIncomingMessage,
     onUserLastMessageUpdate: handleUserPreviewUpdate,
     onReadReceipt: handleReadReceipt,
     onUnreadCountUpdate: (senderEmail, unreadCount) => {
-      // Fast update for unread count from backend
-      setUnreadCounts(prev => ({ ...prev, [senderEmail]: unreadCount }));
+      applyUnreadCountUpdate(senderEmail, unreadCount);
     },
   });
 
-  // Set the sendReadReceipt reference
-  useEffect(() => {
-    sendReadReceiptRef.current = sendReadReceipt;
-  }, [sendReadReceipt]);
-
-  // ========== useEffect Hooks ==========
   useEffect(() => {
     if (!user?.email) return;
     void refreshConnectedUsers();
@@ -352,24 +350,6 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       );
     });
   }, [connectedUsers, incomingRequests, searchResults]);
-
-  useEffect(() => {
-    if (connectedUsers.length > 0 && Object.keys(unreadCounts).length > 0) {
-      const hasChanges = Object.keys(unreadCounts).some(
-        email => unreadCounts[email] !== (prevUnreadCountsRef.current[email] || 0)
-      );
-      
-      if (hasChanges) {
-        setConnectedUsers(currentUsers => {
-          return currentUsers.map(user => ({
-            ...user,
-            unreadCount: unreadCounts[user.email] || 0
-          }));
-        });
-        prevUnreadCountsRef.current = { ...unreadCounts };
-      }
-    }
-  }, [unreadCounts, connectedUsers]);
 
   const loadConversation = useCallback(async (chatUser) => {
     if (!chatUser?.email || !chatUser.isConnected) {
@@ -463,7 +443,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     } finally {
       setActionUserId(null);
     }
-  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+  }, [actionUserId, clearSelectedUser, selectedUser, syncAfterRelationshipChange]);
 
   const rejectFollowRequest = useCallback(async (requesterUser) => {
     if (!requesterUser?.id || actionUserId) return;
@@ -481,7 +461,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     } finally {
       setActionUserId(null);
     }
-  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+  }, [actionUserId, clearSelectedUser, selectedUser, syncAfterRelationshipChange]);
 
   const cancelSentRequest = useCallback(async (targetUser) => {
     if (!targetUser?.id || actionUserId) return;
@@ -499,7 +479,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     } finally {
       setActionUserId(null);
     }
-  }, [actionUserId, syncAfterRelationshipChange, selectedUser, clearSelectedUser]);
+  }, [actionUserId, clearSelectedUser, selectedUser, syncAfterRelationshipChange]);
 
   const sendMessage = useCallback(async (event) => {
     event.preventDefault();

@@ -40,6 +40,7 @@ public class ChatService {
         message.setContent(content);
         message.setRoomId(buildRoomId1(senderEmail, receiverEmail));
         message.setType(MessageType.CHAT);
+        message.setDeliveredAt(LocalDateTime.now());
         return saveMessage(message);
     }
 

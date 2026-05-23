@@ -1,3 +1,4 @@
+// ==================== ChatWindow.jsx (FIXED - hasMarkedAsReadRef removed) ====================
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 const getTimestampValue = (timestamp) => {
@@ -173,24 +174,21 @@ const ChatWindow = ({
   const messagesContainerRef = useRef(null);
   const orderedMessages = sortMessagesByTime(messages);
   const [showMenu, setShowMenu] = useState(false);
-  const hasMarkedAsReadRef = useRef(false);
 
-  // UPDATED: Mark as read immediately when chat opens (100ms instead of 500ms)
+  // FIXED: Removed hasMarkedAsReadRef - now marks every time chat opens
   useEffect(() => {
-    if (!selectedUser?.isConnected || loading || hasMarkedAsReadRef.current) return;
+    if (!selectedUser?.isConnected || loading) return;
 
     const timer = setTimeout(() => {
       if (selectedUser?.email) {
         console.log('🎯 Chat opened, marking messages as read immediately');
         onMarkAsRead?.(selectedUser.email);
-        hasMarkedAsReadRef.current = true;
       }
     }, 100);
 
     return () => clearTimeout(timer);
   }, [selectedUser?.email, selectedUser?.isConnected, loading, onMarkAsRead]);
 
-  // UPDATED: Periodic mark as read every 15 seconds (was 30 seconds)
   useEffect(() => {
     if (!selectedUser?.isConnected) return;
 
@@ -217,7 +215,7 @@ const ChatWindow = ({
   }, [selectedUser?.email, selectedUser?.isConnected, onMarkAsRead]);
 
   const handleScroll = useCallback(() => {
-    if (!selectedUser?.isConnected || hasMarkedAsReadRef.current) return;
+    if (!selectedUser?.isConnected) return;
 
     const container = messagesContainerRef.current;
     if (container) {
@@ -225,7 +223,6 @@ const ChatWindow = ({
       if (isAtBottom) {
         console.log('📜 Scrolled to bottom, marking as read');
         onMarkAsRead?.(selectedUser.email);
-        hasMarkedAsReadRef.current = true;
       }
     }
   }, [selectedUser?.email, selectedUser?.isConnected, onMarkAsRead]);

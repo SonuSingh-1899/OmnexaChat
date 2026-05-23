@@ -12,6 +12,7 @@ import java.util.List;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     
+       
     List<ChatMessage> findByRoomIdOrderByTimestampDesc(String roomId, Pageable pageable);
     
     @Query("SELECT m FROM ChatMessage m WHERE (m.senderEmail = :user1 AND m.receiverEmail = :user2) OR (m.senderEmail = :user2 AND m.receiverEmail = :user1) ORDER BY m.timestamp DESC")
@@ -48,6 +49,12 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
            "AND (m.isread IS NULL OR m.isread != 'READ')")
     List<ChatMessage> findUnreadMessagesFromSender(@Param("senderEmail") String senderEmail,
                                                     @Param("receiverEmail") String receiverEmail);
+
+    @Query("SELECT m.senderEmail, COUNT(m) FROM ChatMessage m " +
+           "WHERE m.receiverEmail = :receiverEmail " +
+           "AND (m.isread IS NULL OR m.isread != 'READ') " +
+           "GROUP BY m.senderEmail")
+    List<Object[]> countUnreadMessagesBySender(@Param("receiverEmail") String receiverEmail);
 
         @Query("SELECT MAX(m.timestamp) FROM ChatMessage m " +
        "WHERE (m.senderEmail = :email1 AND m.receiverEmail = :email2) " +

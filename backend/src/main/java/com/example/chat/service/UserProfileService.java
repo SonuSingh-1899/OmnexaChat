@@ -505,7 +505,7 @@ public List<UserProfileResponse> getConnectedUsers() {
 
                 return new RelationshipFlags(false, false, true);
             })
-            .orElse(RelationshipFlags.none());
+            .orElse(RelationshipFlags.none());c
     }
 
     private boolean isUserOnline(User user) {

@@ -52,16 +52,16 @@ const useWebSocket = ({
       reader: currentUserEmail,
       sender: senderEmail,
       timestamp: new Date().toISOString(),
-      ...(messageId && { messageId })
+      ...(messageId && { messageId }),
     };
 
     const destination = `/app/mark.read/${senderEmail}`;
     console.log('Sending read receipt to:', destination, receipt);
-    
+
     try {
       client.publish({
         destination,
-        body: JSON.stringify(receipt)
+        body: JSON.stringify(receipt),
       });
       return true;
     } catch (error) {
@@ -85,57 +85,43 @@ const useWebSocket = ({
       heartbeatOutgoing: 4000,
       onConnect: () => {
         console.log('WebSocket connected for:', currentUserEmail);
-        
+
         client.subscribe(buildInboxDestination(currentUserEmail), (frame) => {
           try {
             const data = JSON.parse(frame.body);
-            console.log('📨 WebSocket message received:', data.type || 'MESSAGE');
-            
-            // Handle READ_RECEIPT from backend
+            console.log('WebSocket message received:', data.type || 'MESSAGE');
+
             if (data.type === 'READ_RECEIPT') {
-              console.log(`✅ Read receipt received from ${data.reader}`);
-              
-              // Update unread count to 0 for this sender
-              if (data.reader && onUnreadCountUpdateRef.current) {
-                onUnreadCountUpdateRef.current(data.reader, 0);
-              }
-              
-              // Update message read status in UI
+              console.log(`Read receipt received from ${data.reader}`);
               onReadReceiptRef.current?.(data);
-            }
-            // Handle MESSAGE_READ (single message)
-            else if (data.type === 'MESSAGE_READ') {
-              console.log(`📖 Single message read: ${data.messageId}`);
+            } else if (data.type === 'MESSAGE_READ') {
+              console.log(`Single message read: ${data.messageId}`);
               onReadReceiptRef.current?.(data);
-            }
-            // Handle MESSAGE with unreadCount (from backend)
-            else if (data.type === 'MESSAGE') {
+            } else if (data.type === 'MESSAGE') {
               const message = data.message;
-              console.log(`💬 Message from ${message.senderEmail}, unreadCount: ${data.unreadCount}`);
-              
-              // Update lastMessage in sidebar
+              const isActiveConversation = message.senderEmail === selectedUserEmailRef.current;
+              console.log(`Message from ${message.senderEmail}, unreadCount: ${data.unreadCount}`);
+
               onUserLastMessageUpdateRef.current?.(message);
-              
-              // Update unreadCount from backend
+
               if (data.unreadCount !== undefined && onUnreadCountUpdateRef.current) {
-                onUnreadCountUpdateRef.current(message.senderEmail, data.unreadCount);
+                onUnreadCountUpdateRef.current(
+                  message.senderEmail,
+                  isActiveConversation ? 0 : data.unreadCount
+                );
               }
-              
-              // If message is from selected user, add to chat window
-              if (message.senderEmail === selectedUserEmailRef.current) {
+
+              if (isActiveConversation) {
                 onMessageReceivedRef.current?.(message);
               }
-            }
-            // Handle plain message (backward compatibility)
-            else if (data.senderEmail || data.content) {
+            } else if (data.senderEmail || data.content) {
               onUserLastMessageUpdateRef.current?.(data);
               if (data.senderEmail === selectedUserEmailRef.current) {
                 onMessageReceivedRef.current?.(data);
               }
-            }
-            // Handle DELIVERED receipt
-            else if (data.type === 'DELIVERED') {
+            } else if (data.type === 'DELIVERED') {
               console.log('Message delivered:', data.messageId);
+              onReadReceiptRef.current?.(data);
             }
           } catch (err) {
             console.error('Failed to parse WS message:', err);

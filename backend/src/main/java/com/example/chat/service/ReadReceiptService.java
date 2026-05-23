@@ -1,4 +1,3 @@
-// Create new file: ReadReceiptService.java
 package com.example.chat.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.exception.BusinessException;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -30,18 +28,14 @@ public class ReadReceiptService {
     public long markMessagesAsRead(String senderEmail) {
         String currentUserEmail = userProfileService.getCurrentUserEmail();
         
-        // Log for debugging
         System.out.println("🔵 [ReadReceipt] markMessagesAsRead called: sender=" + senderEmail + ", reader=" + currentUserEmail);
         
-        // Verify users are connected
         userProfileService.assertUsersConnected(senderEmail);
         
-        // Mark messages as read
         int updatedCount = chatMessageRepository.markConversationAsRead(senderEmail, currentUserEmail);
         
         System.out.println("🔵 [ReadReceipt] Updated " + updatedCount + " messages as read");
         
-        // Send read receipt notification via WebSocket
         if (updatedCount > 0) {
             sendReadReceipt(senderEmail, currentUserEmail, updatedCount);
         }
@@ -56,7 +50,6 @@ public class ReadReceiptService {
         
         String currentUserEmail = userProfileService.getCurrentUserEmail();
         
-        // Only receiver can mark as read
         if (!message.getReceiverEmail().equals(currentUserEmail)) {
             throw new BusinessException("You can only mark messages sent to you as read");
         }
@@ -65,7 +58,6 @@ public class ReadReceiptService {
             message.markAsRead();
             chatMessageRepository.save(message);
             
-            // Send read receipt for this specific message
             sendSingleReadReceipt(message.getSenderEmail(), currentUserEmail, messageId);
         }
     }
@@ -77,11 +69,9 @@ public class ReadReceiptService {
     
     public Map<String, Long> getUnreadCountsBySender() {
         String currentUserEmail = userProfileService.getCurrentUserEmail();
-        List<ChatMessage> unreadMessages = chatMessageRepository.findUnreadMessagesFromSender(null, currentUserEmail);
-        
         Map<String, Long> unreadCounts = new HashMap<>();
-        for (ChatMessage message : unreadMessages) {
-            unreadCounts.merge(message.getSenderEmail(), 1L, Long::sum);
+        for (Object[] row : chatMessageRepository.countUnreadMessagesBySender(currentUserEmail)) {
+            unreadCounts.put((String) row[0], (Long) row[1]);
         }
         return unreadCounts;
     }

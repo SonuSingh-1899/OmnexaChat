@@ -1,4 +1,4 @@
-// lib/api.js - Check karo ki ye functions sahi hain
+// ==================== api.js (FIXED) ====================
 import axios from 'axios';
 
 const TOKEN_KEY = 'token';
@@ -108,25 +108,21 @@ export const profileApi = {
     return normalizeUserProfile(data);
   },
 
-    // Unfollow a connected user
   unfollowUser: async (userId) => {
     const { data } = await api.delete(`/profile/users/${userId}/unfollow`);
-    return data; // Returns { message: "Unfollowed successfully" }
+    return data;
   },
   
-  // Reject a pending follow request
   rejectFollowRequest: async (requesterId) => {
     const { data } = await api.delete(`/profile/requests/${requesterId}/reject`);
-    return data; // Returns { message: "Follow request rejected successfully" }
+    return data;
   },
   
-  // Cancel your own sent follow request
   cancelSentRequest: async (targetId) => {
     const { data } = await api.delete(`/profile/requests/${targetId}/cancel`);
-    return data; // Returns { message: "Follow request cancelled successfully" }
+    return data;
   },
 
-  
   pingPresence: async () => {
     const { data } = await api.post('/profile/presence/ping');
     return data;
@@ -157,18 +153,6 @@ export const chatApi = {
     const { data } = await api.post('/api/chat/messages', payload);
     return data;
   },
-
-  // lib/api.js - Add these methods to chatApi
-  getConversation: async (otherEmail) => {
-    const encodedEmail = encodeURIComponent(otherEmail);
-    const { data } = await api.get(`/api/chat/conversation/${encodedEmail}`);
-    return data;
-  },
-  sendMessage: async (payload) => {
-    const { data } = await api.post('/api/chat/messages', payload);
-    return data;
-  },
-  // Add these new methods
   markAsRead: async (senderEmail) => {
     const { data } = await api.post(`/api/chat/read/${senderEmail}`);
     return data;

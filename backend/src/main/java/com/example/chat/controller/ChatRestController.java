@@ -82,7 +82,24 @@ public class ChatRestController {
             request.getContent()
         );
 
-        messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), message);
+        long unreadCount = chatService.getUnreadCountForSender(
+            message.getSenderEmail(),
+            message.getReceiverEmail()
+        );
+
+        Map<String, Object> messageWithCount = new HashMap<>();
+        messageWithCount.put("type", "MESSAGE");
+        messageWithCount.put("message", message);
+        messageWithCount.put("unreadCount", unreadCount);
+
+        messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), messageWithCount);
+
+        Map<String, Object> deliveryReceipt = new HashMap<>();
+        deliveryReceipt.put("type", "DELIVERED");
+        deliveryReceipt.put("messageId", message.getId());
+        deliveryReceipt.put("deliveredAt", message.getDeliveredAt());
+
+        messagingTemplate.convertAndSend(buildInboxDestination(message.getSenderEmail()), deliveryReceipt);
 
         return ResponseEntity.ok(message);
     }
