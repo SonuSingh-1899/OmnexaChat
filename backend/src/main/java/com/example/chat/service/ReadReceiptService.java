@@ -30,11 +30,16 @@ public class ReadReceiptService {
     public long markMessagesAsRead(String senderEmail) {
         String currentUserEmail = userProfileService.getCurrentUserEmail();
         
+        // Log for debugging
+        System.out.println("🔵 [ReadReceipt] markMessagesAsRead called: sender=" + senderEmail + ", reader=" + currentUserEmail);
+        
         // Verify users are connected
         userProfileService.assertUsersConnected(senderEmail);
         
         // Mark messages as read
         int updatedCount = chatMessageRepository.markConversationAsRead(senderEmail, currentUserEmail);
+        
+        System.out.println("🔵 [ReadReceipt] Updated " + updatedCount + " messages as read");
         
         // Send read receipt notification via WebSocket
         if (updatedCount > 0) {
@@ -87,9 +92,11 @@ public class ReadReceiptService {
         receipt.put("reader", readerEmail);
         receipt.put("readBy", readerEmail);
         receipt.put("messageCount", count);
+        receipt.put("unreadCount", 0);
         receipt.put("timestamp", java.time.LocalDateTime.now().toString());
         
         messagingTemplate.convertAndSend("/topic/messages/" + senderEmail, receipt);
+        System.out.println("📤 [ReadReceipt] Sent READ_RECEIPT to " + senderEmail + " with count=" + count);
     }
     
     private void sendSingleReadReceipt(String senderEmail, String readerEmail, Long messageId) {

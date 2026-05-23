@@ -54,4 +54,23 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
        "OR (m.senderEmail = :email2 AND m.receiverEmail = :email1)")
 LocalDateTime findLatestMessageTimeBetween(@Param("email1") String email1, 
                                             @Param("email2") String email2);
+
+
+
+
+       @Query(value = "SELECT m.content FROM chat_messages m " +
+           "WHERE (m.sender_email = :email1 AND m.receiver_email = :email2) " +
+           "OR (m.sender_email = :email2 AND m.receiver_email = :email1) " +
+           "ORDER BY m.timestamp DESC LIMIT 1", nativeQuery = true)
+    String findLatestMessageContent(@Param("email1") String email1, 
+                                     @Param("email2") String email2);
+    
+    // ✅ ADD THIS METHOD - Count unread messages from specific sender
+    @Query("SELECT COUNT(m) FROM ChatMessage m " +
+           "WHERE m.senderEmail = :senderEmail " +
+           "AND m.receiverEmail = :receiverEmail " +
+           "AND (m.isread IS NULL OR m.isread != 'READ')")
+    long countUnreadFromSender(@Param("senderEmail") String senderEmail,
+                               @Param("receiverEmail") String receiverEmail);
+
 }

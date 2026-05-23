@@ -40,16 +40,28 @@ public class ChatController {
         message.setDeliveredAt(LocalDateTime.now());
         ChatMessage savedMessage = chatService.saveMessage(message);
 
-        messagingTemplate.convertAndSend(
-            buildInboxDestination(savedMessage.getReceiverEmail()),
-            savedMessage
+        // ✅ Get unread count for receiver (from this sender)
+        long unreadCount = chatService.getUnreadCountForSender(
+            savedMessage.getSenderEmail(), 
+            savedMessage.getReceiverEmail()
         );
 
+        // ✅ Send message WITH unreadCount to receiver
+        Map<String, Object> messageWithCount = new HashMap<>();
+        messageWithCount.put("type", "MESSAGE");
+        messageWithCount.put("message", savedMessage);
+        messageWithCount.put("unreadCount", unreadCount);
+
+        messagingTemplate.convertAndSend(
+            buildInboxDestination(savedMessage.getReceiverEmail()),
+            messageWithCount
+        );
+
+        // ✅ Send delivery receipt to sender (optional - keep as is)
         Map<String, Object> deliveryReceipt = new HashMap<>();
         deliveryReceipt.put("type", "DELIVERED");
         deliveryReceipt.put("messageId", savedMessage.getId());
         deliveryReceipt.put("deliveredAt", savedMessage.getDeliveredAt());
-
 
         messagingTemplate.convertAndSend(
             buildInboxDestination(savedMessage.getSenderEmail()),

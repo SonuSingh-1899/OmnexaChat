@@ -48,4 +48,8 @@ public class ChatService {
             ? user1 + "__" + user2
             : user2 + "__" + user1;
     }
+
+    public long getUnreadCountForSender(String senderEmail, String receiverEmail) {
+        return chatRepository.countUnreadFromSender(senderEmail, receiverEmail);
+    }
 }

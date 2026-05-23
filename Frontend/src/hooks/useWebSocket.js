@@ -11,12 +11,14 @@ const useWebSocket = ({
   onMessageReceived,
   onUserLastMessageUpdate,
   onReadReceipt,
+  onUnreadCountUpdate,
 }) => {
   const stompClientRef = useRef(null);
   const selectedUserEmailRef = useRef(selectedUserEmail);
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onUserLastMessageUpdateRef = useRef(onUserLastMessageUpdate);
   const onReadReceiptRef = useRef(onReadReceipt);
+  const onUnreadCountUpdateRef = useRef(onUnreadCountUpdate);
 
   useEffect(() => {
     selectedUserEmailRef.current = selectedUserEmail;
@@ -34,7 +36,10 @@ const useWebSocket = ({
     onReadReceiptRef.current = onReadReceipt;
   }, [onReadReceipt]);
 
-  // Function to send read receipt via WebSocket
+  useEffect(() => {
+    onUnreadCountUpdateRef.current = onUnreadCountUpdate;
+  }, [onUnreadCountUpdate]);
+
   const sendReadReceipt = useCallback((senderEmail, messageId = null) => {
     const client = stompClientRef.current;
     if (!client || !client.connected || !currentUserEmail) {
@@ -84,16 +89,53 @@ const useWebSocket = ({
         client.subscribe(buildInboxDestination(currentUserEmail), (frame) => {
           try {
             const data = JSON.parse(frame.body);
-            console.log('WebSocket message received:', data);
+            console.log('📨 WebSocket message received:', data.type || 'MESSAGE');
             
-            if (data.type === 'READ_RECEIPT' || data.type === 'MESSAGE_READ') {
-              console.log('Read receipt detected, calling handler');
-              onReadReceiptRef.current?.(data);
-            } else {
-              onUserLastMessageUpdateRef.current(data);
-              if (data.senderEmail === selectedUserEmailRef.current) {
-                onMessageReceivedRef.current(data);
+            // Handle READ_RECEIPT from backend
+            if (data.type === 'READ_RECEIPT') {
+              console.log(`✅ Read receipt received from ${data.reader}`);
+              
+              // Update unread count to 0 for this sender
+              if (data.reader && onUnreadCountUpdateRef.current) {
+                onUnreadCountUpdateRef.current(data.reader, 0);
               }
+              
+              // Update message read status in UI
+              onReadReceiptRef.current?.(data);
+            }
+            // Handle MESSAGE_READ (single message)
+            else if (data.type === 'MESSAGE_READ') {
+              console.log(`📖 Single message read: ${data.messageId}`);
+              onReadReceiptRef.current?.(data);
+            }
+            // Handle MESSAGE with unreadCount (from backend)
+            else if (data.type === 'MESSAGE') {
+              const message = data.message;
+              console.log(`💬 Message from ${message.senderEmail}, unreadCount: ${data.unreadCount}`);
+              
+              // Update lastMessage in sidebar
+              onUserLastMessageUpdateRef.current?.(message);
+              
+              // Update unreadCount from backend
+              if (data.unreadCount !== undefined && onUnreadCountUpdateRef.current) {
+                onUnreadCountUpdateRef.current(message.senderEmail, data.unreadCount);
+              }
+              
+              // If message is from selected user, add to chat window
+              if (message.senderEmail === selectedUserEmailRef.current) {
+                onMessageReceivedRef.current?.(message);
+              }
+            }
+            // Handle plain message (backward compatibility)
+            else if (data.senderEmail || data.content) {
+              onUserLastMessageUpdateRef.current?.(data);
+              if (data.senderEmail === selectedUserEmailRef.current) {
+                onMessageReceivedRef.current?.(data);
+              }
+            }
+            // Handle DELIVERED receipt
+            else if (data.type === 'DELIVERED') {
+              console.log('Message delivered:', data.messageId);
             }
           } catch (err) {
             console.error('Failed to parse WS message:', err);
@@ -128,7 +170,6 @@ const useWebSocket = ({
     };
   }, [connect, currentUserEmail]);
 
-  // Return sendReadReceipt function for use in components
   return { sendReadReceipt };
 };
 

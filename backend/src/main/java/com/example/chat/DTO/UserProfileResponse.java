@@ -19,4 +19,7 @@ public class UserProfileResponse {
     private long followingCount;
     private LocalDateTime lastloginAt;
     private LocalDateTime createdAt;
+    private String lastMessage;
+    private LocalDateTime lastMessageTime;
+    private long unreadCount; 
 }

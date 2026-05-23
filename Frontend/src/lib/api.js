@@ -37,6 +37,9 @@ const normalizeUserProfile = (user) => {
     isRequestReceived: Boolean(user.isRequestReceived ?? user.requestReceived),
     followersCount: user.followersCount ?? 0,
     followingCount: user.followingCount ?? 0,
+    lastMessage: user.lastMessage || null,
+    lastMessageTime: user.lastMessageTime || null,
+    unreadCount: user.unreadCount ?? 0,
   };
 };
 

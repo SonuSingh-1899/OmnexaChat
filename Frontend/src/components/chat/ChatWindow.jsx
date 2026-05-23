@@ -27,7 +27,6 @@ const getConversationSubtitle = (selectedUser) => {
   return userBio.length > 42 ? `${userBio.slice(0, 42).trim()}...` : userBio;
 };
 
-// ✅ FIXED: Compact Message Status - sirf icon, no background pill
 const MessageStatus = ({ message, isOwnMessage }) => {
   if (!isOwnMessage || message.isTemp) return null;
 
@@ -176,33 +175,31 @@ const ChatWindow = ({
   const [showMenu, setShowMenu] = useState(false);
   const hasMarkedAsReadRef = useRef(false);
 
-  useEffect(() => {
-    if (selectedUser?.isConnected && selectedUser?.email && !loading) {
-      hasMarkedAsReadRef.current = false;
-    }
-  }, [selectedUser?.email, selectedUser?.isConnected, loading]);
-
+  // UPDATED: Mark as read immediately when chat opens (100ms instead of 500ms)
   useEffect(() => {
     if (!selectedUser?.isConnected || loading || hasMarkedAsReadRef.current) return;
 
     const timer = setTimeout(() => {
       if (selectedUser?.email) {
+        console.log('🎯 Chat opened, marking messages as read immediately');
         onMarkAsRead?.(selectedUser.email);
         hasMarkedAsReadRef.current = true;
       }
-    }, 500);
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [selectedUser?.email, selectedUser?.isConnected, loading, onMarkAsRead]);
 
+  // UPDATED: Periodic mark as read every 15 seconds (was 30 seconds)
   useEffect(() => {
     if (!selectedUser?.isConnected) return;
 
     const intervalId = setInterval(() => {
       if (selectedUser?.email && document.visibilityState === 'visible') {
+        console.log('🔄 Periodic mark as read');
         onMarkAsRead?.(selectedUser.email);
       }
-    }, 30000);
+    }, 15000);
 
     return () => clearInterval(intervalId);
   }, [selectedUser?.email, selectedUser?.isConnected, onMarkAsRead]);
@@ -210,6 +207,7 @@ const ChatWindow = ({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && selectedUser?.isConnected && selectedUser?.email) {
+        console.log('👁️ Tab became visible, marking as read');
         onMarkAsRead?.(selectedUser.email);
       }
     };
@@ -225,6 +223,7 @@ const ChatWindow = ({
     if (container) {
       const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
       if (isAtBottom) {
+        console.log('📜 Scrolled to bottom, marking as read');
         onMarkAsRead?.(selectedUser.email);
         hasMarkedAsReadRef.current = true;
       }
@@ -258,9 +257,8 @@ const ChatWindow = ({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Chat Header */}
       <div
-        className="chat-header flex items-center gap-3 px-4 py-3 shrink-0 border-b"
+        className="chat-header flex items-center gap-3 px-4 py-4 shrink-0 border-b"
         style={{ borderColor: theme.border, background: theme.surface }}
       >
         <button
@@ -345,7 +343,6 @@ const ChatWindow = ({
         </div>
       </div>
 
-      {/* Chat Content */}
       {!selectedUser.isConnected ? (
         <RelationshipState
           theme={theme}
@@ -391,7 +388,6 @@ const ChatWindow = ({
                     )}
 
                     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                      {/* ✅ FIXED: Smaller bubble padding, compact text */}
                       <div
                         className={`max-w-[78%] md:max-w-[62%] px-3 py-1.5 ${
                           isOwnMessage
@@ -409,7 +405,6 @@ const ChatWindow = ({
                           {message.content}
                         </p>
 
-                        {/* ✅ FIXED: Time + status inline, very compact */}
                         <div className="flex items-center justify-end gap-1 mt-0.5">
                           <span className="text-[9px] opacity-55">
                             {message.isTemp
@@ -443,9 +438,9 @@ const ChatWindow = ({
               type="text"
               value={newMessage}
               onChange={(event) => onNewMessageChange(event.target.value)}
-              placeholder="Type a message..."
+              placeholder="Type a new message..."
               disabled={sending}
-              className="flex-1 px-3.5 py-2 rounded-full outline-none text-sm transition-all focus:ring-2 bg-gray-100 dark:bg-gray-800"
+              className="flex-1 px-3.5 py-2 rounded-full outline-none text-sm transition-all bg-gray-100 dark:bg-gray-800"
               style={{ border: `1px solid ${theme.border}`, color: theme.text }}
             />
             <button

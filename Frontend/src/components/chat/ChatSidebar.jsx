@@ -78,28 +78,26 @@ const SectionTitle = ({ children, theme }) => (
 );
 
 const getDisplayMessageWithCount = (chatUser) => {
-  // Case 1: Unread messages hain
-  if (chatUser.unreadCount > 0) {
-    // Multiple unread - count dikhao, last message nahi
-    if (chatUser.unreadCount > 1) {
-      return `${chatUser.unreadCount} new messages`;
-    }
-    // Exactly 1 unread - last message dikhao (truncated)
+  // Exactly 1 unread → show message content
+  if (chatUser.unreadCount === 1) {
     if (chatUser.lastMessage) {
       const message = chatUser.lastMessage;
-      return message.length > 28 ? message.slice(0, 28) + '...' : message;
+      return message.length > 32 ? message.slice(0, 32) + '...' : message;
     }
-    return '1 new message';
+    return 'New message';
   }
 
-  // Case 2: No unread - last message dikhao agar hai
-  // "Ready to chat" tabhi show hoga jab koi bhi message hi na ho kabhi
+  // More than 1 unread → show count + "new messages"
+  if (chatUser.unreadCount > 1) {
+    return `${chatUser.unreadCount} new messages`;
+  }
+
+  // No unread → show last message or fallback
   if (chatUser.lastMessage) {
     const message = chatUser.lastMessage;
     return message.length > 32 ? message.slice(0, 32) + '...' : message;
   }
 
-  // Case 3: Bilkul naya connection, koi message nahi
   return 'Ready to chat';
 };
 
@@ -178,13 +176,11 @@ const UserCard = ({
           }
         }}
       >
-        {/* ✅ FIX 3: Avatar - green dot completely removed */}
         <div
           className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold relative"
           style={{ background: theme.pageBackground, color: theme.text }}
         >
           {getUserInitial(chatUser.name)}
-          {/* Green online dot removed */}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -214,7 +210,7 @@ const UserCard = ({
           </div>
 
           <div className="flex items-center gap-1.5 mt-0.5">
-            {/* ✅ FIX 1 & 2: Subtitle with unread badge */}
+            {/* Display message with proper styling */}
             <p
               className="m-0 text-xs truncate flex-1"
               style={{
@@ -225,10 +221,10 @@ const UserCard = ({
               {displayMessage}
             </p>
 
-            {/* ✅ Unread count badge - sirf tab dikhega jab unreadCount > 1 ho */}
+            {/* Unread count badge - only show when > 1 */}
             {hasUnread && chatUser.unreadCount > 1 && (
               <span
-                className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+                className="shrink-0 min-w-4.5 h-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
                 style={{
                   background: theme.accent,
                   color: theme.accentText,
@@ -346,19 +342,6 @@ const ChatSidebar = ({
         boxShadow: `0 18px 42px ${theme.shadow}`,
       }}
     >
-      {/* Total unread summary */}
-      {!showSearchSection && totalUnread > 0 && (
-        <div
-          className="mx-3 mt-2 px-3 py-2 rounded-lg text-center text-xs font-medium"
-          style={{
-            background: `rgba(59, 130, 246, 0.1)`,
-            color: theme.accent,
-          }}
-        >
-          {totalUnread} unread message{totalUnread > 1 ? 's' : ''}
-        </div>
-      )}
-
       <div
         className="flex-1 overflow-y-auto px-3 py-2.5"
         style={{ paddingBottom: isCompactMobile ? '96px' : undefined }}

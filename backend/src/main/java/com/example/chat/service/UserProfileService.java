@@ -520,7 +520,7 @@ public List<UserProfileResponse> getConnectedUsers() {
         return userConnectionRepository.countByUserAndStatus(user, ConnectionStatus.ACCEPTED);
     }
 
-    private UserProfileResponse convertToResponse(
+private UserProfileResponse convertToResponse(
         User user,
         RelationshipFlags relationshipFlags,
         boolean includeConnectionCounts
@@ -541,6 +541,29 @@ public List<UserProfileResponse> getConnectedUsers() {
             long connectionCount = getConnectionCountForUser(user);
             response.setFollowersCount(connectionCount);
             response.setFollowingCount(connectionCount);
+        }
+
+       
+        if (!includeConnectionCounts) {
+            String currentUserEmail = getCurrentUserEmail();
+            
+            // 1. Last message time
+            LocalDateTime lastMsgTime = getLatestMessageTime(currentUserEmail, user.getEmail());
+            response.setLastMessageTime(lastMsgTime);
+            
+            // 2. Last message content
+            if (lastMsgTime != null) {
+                String lastMessage = chatMessageRepository.findLatestMessageContent(
+                    currentUserEmail, user.getEmail()
+                );
+                response.setLastMessage(lastMessage);
+            }
+            
+            // 3. Unread count from this user
+            long unreadCount = chatMessageRepository.countUnreadFromSender(
+                user.getEmail(), currentUserEmail
+            );
+            response.setUnreadCount(unreadCount);
         }
 
         response.setLastloginAt(user.getLastloginAt());
