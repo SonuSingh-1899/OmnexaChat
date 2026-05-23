@@ -19,7 +19,6 @@ import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.exception.BusinessException;
 import com.example.chat.service.ChatService;
-import com.example.chat.service.FirebasePushNotificationService;
 import com.example.chat.service.ReadReceiptService;
 import com.example.chat.service.UserProfileService;
 
@@ -40,9 +39,6 @@ public class ChatRestController {
 
     @Autowired
     private UserProfileService userProfileService;
-
-    @Autowired
-    private FirebasePushNotificationService firebasePushNotificationService;
 
     @GetMapping("/messages/{roomId}")
     public ResponseEntity<List<ChatMessage>> getMessages1(
@@ -86,29 +82,7 @@ public class ChatRestController {
             request.getContent()
         );
 
-        long unreadCount = chatService.getUnreadCountForSender(
-            message.getSenderEmail(),
-            message.getReceiverEmail()
-        );
-
-        Map<String, Object> messageWithCount = new HashMap<>();
-        messageWithCount.put("type", "MESSAGE");
-        messageWithCount.put("message", message);
-        messageWithCount.put("unreadCount", unreadCount);
-
-        messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), messageWithCount);
-
-        Map<String, Object> deliveryReceipt = new HashMap<>();
-        deliveryReceipt.put("type", "DELIVERED");
-        deliveryReceipt.put("messageId", message.getId());
-        deliveryReceipt.put("deliveredAt", message.getDeliveredAt());
-
-        messagingTemplate.convertAndSend(buildInboxDestination(message.getSenderEmail()), deliveryReceipt);
-<<<<<<< HEAD
-=======
-
-        firebasePushNotificationService.sendMessageNotification(message);
->>>>>>> b075237 (build a proper push notificatioin system after proper testing using firebase)
+        messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), message);
 
         return ResponseEntity.ok(message);
     }
