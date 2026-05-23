@@ -1,7 +1,21 @@
 // pages/Profile.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Avatar from '../components/common/Avatar';
 import MobileTopBar from '../components/layout/MobileTopBar';
 import { profileApi } from '../lib/api';
+
+const CameraIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M8.5 6.5 10 4h4l1.5 2.5H18A3 3 0 0 1 21 9.5v7A3.5 3.5 0 0 1 17.5 20h-11A3.5 3.5 0 0 1 3 16.5v-7A3 3 0 0 1 6 6.5h2.5Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
 
 const Profile = ({
   theme,
@@ -20,18 +34,17 @@ const Profile = ({
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [removingAvatar, setRemovingAvatar] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isEditing, setIsEditing] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || '',
-        bio: user.bio || '',
-        avatarUrl: user.avatarUrl || '',
-      });
-    }
-  }, [user]);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false);
+  const [avatarMenuPosition, setAvatarMenuPosition] = useState({ top: 0, left: 0 });
+  const fileInputRef = useRef(null);
+  const avatarMenuRef = useRef(null);
+  const avatarActionButtonRef = useRef(null);
+  const editAvatarActionButtonRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,6 +67,37 @@ const Profile = ({
       isMounted = false;
     };
   }, [onUserUpdated]);
+
+  useEffect(() => {
+    if (!isAvatarMenuOpen && !isAvatarPreviewOpen) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsAvatarMenuOpen(false);
+        setIsAvatarPreviewOpen(false);
+      }
+    };
+
+    const handleClickOutside = (event) => {
+      const clickedMenu = avatarMenuRef.current?.contains(event.target);
+      const clickedMainButton = avatarActionButtonRef.current?.contains(event.target);
+      const clickedEditButton = editAvatarActionButtonRef.current?.contains(event.target);
+
+      if (!clickedMenu && !clickedMainButton && !clickedEditButton) {
+        setIsAvatarMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAvatarMenuOpen, isAvatarPreviewOpen]);
 
   const openEditMode = () => {
     setFormData({
@@ -84,6 +128,71 @@ const Profile = ({
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     setMessage({ text: '', type: '' });
+  };
+
+  const syncUserAfterAvatarUpdate = (nextUser) => {
+    onUserUpdated?.(nextUser);
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    setFormData((prev) => ({
+      ...prev,
+      avatarUrl: nextUser.avatarUrl || '',
+    }));
+  };
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setIsAvatarMenuOpen(false);
+    setErrors({});
+    setMessage({ text: '', type: '' });
+
+    try {
+      const updatedProfile = await profileApi.uploadAvatar(file);
+      syncUserAfterAvatarUpdate(updatedProfile);
+      setMessage({ text: 'Profile photo updated successfully!', type: 'success' });
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setMessage({
+        text: error.response?.data?.message || 'Failed to upload profile photo',
+        type: 'error',
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!formData.avatarUrl && !user?.avatarUrl) {
+      setIsAvatarMenuOpen(false);
+      setMessage({ text: 'No profile photo to remove yet.', type: 'error' });
+      return;
+    }
+
+    setRemovingAvatar(true);
+    setIsAvatarMenuOpen(false);
+    setErrors({});
+    setMessage({ text: '', type: '' });
+
+    try {
+      const updatedProfile = await profileApi.removeAvatar();
+      syncUserAfterAvatarUpdate(updatedProfile);
+      setMessage({ text: 'Profile photo removed successfully!', type: 'success' });
+      setIsAvatarPreviewOpen(false);
+    } catch (error) {
+      console.error('Failed to remove avatar:', error);
+      setMessage({
+        text: error.response?.data?.message || 'Failed to remove profile photo',
+        type: 'error',
+      });
+    } finally {
+      setRemovingAvatar(false);
+    }
   };
 
   const validateProfileForm = () => {
@@ -153,6 +262,49 @@ const Profile = ({
     }
   };
 
+  const openAvatarPicker = () => {
+    if (!uploadingAvatar && !loading && !removingAvatar) {
+      setIsAvatarMenuOpen(false);
+      fileInputRef.current?.click();
+    }
+  };
+
+  const openAvatarMenu = (event) => {
+    if (uploadingAvatar || loading || removingAvatar) {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const popupWidth = 220;
+    const horizontalPadding = 16;
+    const top = Math.min(window.innerHeight - 180, rect.bottom + 10);
+    const left = Math.min(
+      window.innerWidth - popupWidth - horizontalPadding,
+      Math.max(horizontalPadding, rect.right - popupWidth)
+    );
+
+    setAvatarMenuPosition({
+      top: Math.max(16, top),
+      left: Math.max(16, left),
+    });
+    setIsAvatarMenuOpen(true);
+  };
+
+  const handleShowAvatar = () => {
+    if (!formData.avatarUrl && !user?.avatarUrl) {
+      setIsAvatarMenuOpen(false);
+      setMessage({ text: 'No profile photo to show yet.', type: 'error' });
+      return;
+    }
+
+    setIsAvatarMenuOpen(false);
+    setIsAvatarPreviewOpen(true);
+  };
+
+  const currentAvatarUrl = formData.avatarUrl || user?.avatarUrl || '';
+  const hasAvatarImage = Boolean(currentAvatarUrl);
+  const isAvatarActionBusy = uploadingAvatar || loading || removingAvatar;
+
   return (
     <div
       className="min-h-screen"
@@ -196,18 +348,48 @@ const Profile = ({
       </div>
 
       <div className="max-w-lg mx-auto px-6 py-8">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={handleAvatarUpload}
+        />
+
         <div className="text-center mb-8">
-          <div 
-            className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center text-white text-4xl font-medium shadow-lg"
-            style={{
-              background: theme.accent,
-            }}
-          >
-            {formData.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || '?'}
+          <div className="relative inline-flex mx-auto mb-4">
+            <Avatar
+              name={formData.name || user?.name}
+              avatarUrl={currentAvatarUrl}
+              className="w-24 h-24 rounded-full text-white text-4xl font-medium shadow-lg"
+              style={{ background: theme.accent }}
+            />
+            <button
+              ref={avatarActionButtonRef}
+              type="button"
+              onClick={openAvatarMenu}
+              disabled={isAvatarActionBusy}
+              aria-label={isAvatarActionBusy ? 'Updating profile photo' : 'Open profile photo actions'}
+              className="absolute -right-1 bottom-0 flex h-9 w-9 items-center justify-center rounded-full border shadow-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                background: theme.surface,
+                color: theme.text,
+                borderColor: theme.border,
+              }}
+            >
+              <CameraIcon />
+            </button>
           </div>
           <p className="text-sm" style={{ color: theme.muted }}>
             {user?.email}
           </p>
+          {/* <p className="mt-2 text-xs" style={{ color: theme.muted }}>
+            {uploadingAvatar
+              ? 'Uploading profile photo...'
+              : removingAvatar
+                ? 'Removing profile photo...'
+                : 'Tap the camera icon to manage your photo'}
+          </p> */}
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div 
               className="rounded-xl p-4"
@@ -388,6 +570,103 @@ const Profile = ({
           </div>
         )}
       </div>
+
+      {isAvatarMenuOpen && (
+        <div
+          ref={avatarMenuRef}
+          className="fixed z-50 w-56 rounded-2xl border p-2 shadow-2xl"
+          style={{
+            top: `${avatarMenuPosition.top}px`,
+            left: `${avatarMenuPosition.left}px`,
+            background: theme.surface,
+            borderColor: theme.border,
+            boxShadow: `0 18px 45px -20px ${theme.shadow}`,
+          }}
+        >
+          <button
+            type="button"
+            onClick={handleRemoveAvatar}
+            disabled={!hasAvatarImage || isAvatarActionBusy}
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ color: '#dc2626' }}
+          >
+            <span>Remove image</span>
+            <span className="text-xs">{removingAvatar ? '...' : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={openAvatarPicker}
+            disabled={isAvatarActionBusy}
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ color: theme.text }}
+          >
+            <span>Upload image</span>
+            <span className="text-xs">{uploadingAvatar ? '...' : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleShowAvatar}
+            disabled={!hasAvatarImage}
+            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ color: theme.text }}
+          >
+            <span>Show image</span>
+            {/* <span className="text-xs">{hasAvatarImage ? 'Open' : 'N/A'}</span> */}
+          </button>
+        </div>
+      )}
+
+      {isAvatarPreviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close image preview"
+            className="absolute inset-0 border-none"
+            style={{ background: 'rgba(15, 23, 42, 0.72)' }}
+            onClick={() => setIsAvatarPreviewOpen(false)}
+          />
+          <div
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border p-3 shadow-2xl"
+            style={{
+              background: theme.surface,
+              borderColor: theme.border,
+            }}
+          >
+            <div className="flex items-center justify-between px-2 pb-3">
+              <div>
+                <p className="m-0 text-sm font-semibold" style={{ color: theme.text }}>
+                  Profile image
+                </p>
+                <p className="m-0 text-xs" style={{ color: theme.muted }}>
+                  {user?.name || 'User'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAvatarPreviewOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border text-sm"
+                style={{
+                  borderColor: theme.border,
+                  color: theme.text,
+                  background: theme.pageBackground,
+                }}
+              >
+                X
+              </button>
+            </div>
+            <div
+              className="overflow-hidden rounded-2xl"
+              style={{ background: theme.pageBackground }}
+            >
+              <img
+                src={currentAvatarUrl}
+                alt={`${user?.name || 'User'} profile`}
+                className="block h-auto max-h-[70vh] w-full object-cover"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

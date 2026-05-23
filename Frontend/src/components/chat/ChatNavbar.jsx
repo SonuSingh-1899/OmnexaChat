@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import Avatar from '../common/Avatar';
 import UnionImg from '../../assets/Union.png';
 
 const ChatNavbar = ({
@@ -17,7 +18,6 @@ const ChatNavbar = ({
   isMobileSearchExpanded,
   onToggleMobileSearch,
 }) => {
-  const userInitial = user?.name?.charAt(0).toUpperCase() || '?';
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -185,13 +185,18 @@ const ChatNavbar = ({
               type="button"
               title="Profile"
               onClick={onNavigateToProfile}
-              className="dashboard-profile-button w-9 h-9 rounded-full border-none font-bold cursor-pointer"
-              style={{
-                background: theme.accent,
-                color: theme.accentText,
-              }}
+              className="dashboard-profile-button w-9 h-9 rounded-full border-none cursor-pointer overflow-hidden p-0"
+              style={{ background: 'transparent' }}
             >
-              {userInitial}
+              <Avatar
+                name={user?.name}
+                avatarUrl={user?.avatarUrl}
+                className="w-9 h-9 rounded-full text-xs"
+                style={{
+                  background: theme.accent,
+                  color: theme.accentText,
+                }}
+              />
             </button>
 
             <button

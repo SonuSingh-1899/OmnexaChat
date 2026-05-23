@@ -53,6 +53,7 @@ public class SecurityConfig {
                     "/auth/**",      
                     "/profile/forgot-password",
                     "/profile/reset-password",
+                    "/uploads/**",
                     "/ws/**",
                     "/topic/**",
                     "/app/**",

@@ -67,7 +67,7 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
   return (
     <AuthCard
       title="Login"
-      subtitle="Access your Omnexa dashboard, continue chats, and jump back into your workspace with the same visual flow as the app."
+      subtitle="Access your Omnexa dashboard, continue chats, and jump back into your workspace with the same polished flow as the main app."
       showLogo
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -124,10 +124,14 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
         <button
           type="submit"
           disabled={loading}
-          className="w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-60"
+          className="w-full cursor-pointer rounded-2xl bg-[linear-gradient(135deg,#09090b_0%,#27272a_100%)] px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_34px_rgba(17,24,39,0.20)] disabled:opacity-60"
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-xs leading-6 text-zinc-600">
+          Use the same Omnexa identity to continue chats, profile updates, and notifications without switching flows.
+        </div>
 
         <div className="text-center mt-5 text-sm text-zinc-500">
           Don't have an account?{' '}

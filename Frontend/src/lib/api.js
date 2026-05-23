@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const TOKEN_KEY = 'token';
 const trimTrailingSlash = (value) => value?.replace(/\/+$/, '');
+const ABSOLUTE_URL_PATTERN = /^(?:https?:)?\/\//i;
 const getRequiredEnv = (key) => {
   const value = trimTrailingSlash(import.meta.env[key]);
 
@@ -23,6 +24,24 @@ export const api = axios.create({
 
 export const FORGOT_PASSWORD_EMAIL_KEY = 'forgotPasswordEmail';
 
+const resolveMediaUrl = (value) => {
+  const normalizedValue = typeof value === 'string' ? value.trim() : '';
+
+  if (!normalizedValue) {
+    return '';
+  }
+
+  if (
+    normalizedValue.startsWith('data:') ||
+    normalizedValue.startsWith('blob:') ||
+    ABSOLUTE_URL_PATTERN.test(normalizedValue)
+  ) {
+    return normalizedValue;
+  }
+
+  return `${API_BASE_URL}${normalizedValue.startsWith('/') ? '' : '/'}${normalizedValue}`;
+};
+
 const normalizeUserProfile = (user) => {
   if (!user) {
     return user;
@@ -39,6 +58,7 @@ const normalizeUserProfile = (user) => {
     followingCount: user.followingCount ?? 0,
     lastMessage: user.lastMessage || null,
     lastMessageTime: user.lastMessageTime || null,
+    avatarUrl: resolveMediaUrl(user.avatarUrl),
     unreadCount: user.unreadCount ?? 0,
   };
 };
@@ -77,6 +97,20 @@ export const profileApi = {
   },
   update: async (payload) => {
     const { data } = await api.put('/profile/update', payload);
+    return normalizeUserProfile(data);
+  },
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/profile/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return normalizeUserProfile(data);
+  },
+  removeAvatar: async () => {
+    const { data } = await api.delete('/profile/avatar');
     return normalizeUserProfile(data);
   },
   changePassword: async (payload) => {

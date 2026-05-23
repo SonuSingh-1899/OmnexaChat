@@ -1,5 +1,6 @@
 // ==================== ChatWindow.jsx (FIXED - hasMarkedAsReadRef removed) ====================
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Avatar from '../common/Avatar';
 
 const getTimestampValue = (timestamp) => {
   const resolvedTimestamp = new Date(timestamp).getTime();
@@ -103,12 +104,12 @@ const RelationshipState = ({ theme, selectedUser, actionUserId, onSendRequest, o
   return (
     <div className="flex-1 flex items-center justify-center px-6 py-8 text-center" style={{ background: theme.subtle }}>
       <div className="max-w-md">
-        <div
-          className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center text-2xl font-bold"
+        <Avatar
+          name={selectedUser.name}
+          avatarUrl={selectedUser.avatarUrl}
+          className="w-20 h-20 mx-auto rounded-2xl text-2xl"
           style={{ background: theme.surface, color: theme.text, boxShadow: `0 14px 30px ${theme.shadow}` }}
-        >
-          {selectedUser.name?.charAt(0)?.toUpperCase() || '?'}
-        </div>
+        />
 
         <h3 className="mt-5 mb-2 text-xl" style={{ color: theme.text }}>
           {statusCopy.title}
@@ -241,7 +242,6 @@ const ChatWindow = ({
     return <EmptyConversationState theme={theme} />;
   }
 
-  const userInitial = selectedUser.name?.charAt(0).toUpperCase() || '?';
   const isUserOnline = Boolean(selectedUser.isActive);
   const userStatusText = selectedUser.isConnected
     ? isUserOnline ? 'Online' : 'Offline'
@@ -268,12 +268,12 @@ const ChatWindow = ({
           </svg>
         </button>
 
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 text-sm"
+        <Avatar
+          name={selectedUser.name}
+          avatarUrl={selectedUser.avatarUrl}
+          className="w-9 h-9 rounded-xl text-sm"
           style={{ background: theme.pageBackground, color: theme.text }}
-        >
-          {userInitial}
-        </div>
+        />
 
         <div className="flex-1 min-w-0">
           <h3 className="m-0 text-sm font-semibold truncate leading-tight" style={{ color: theme.text }}>
@@ -437,8 +437,14 @@ const ChatWindow = ({
               onChange={(event) => onNewMessageChange(event.target.value)}
               placeholder="Type a new message..."
               disabled={sending}
-              className="flex-1 px-3.5 py-2 rounded-full outline-none text-sm transition-all bg-gray-100 dark:bg-gray-800"
-              style={{ border: `1px solid ${theme.border}`, color: theme.text }}
+              className="chat-message-input flex-1 px-3.5 py-2 rounded-full outline-none text-sm transition-all"
+              style={{
+                border: `1px solid ${theme.border}`,
+                color: theme.text,
+                background: theme.pageBackground,
+                '--chat-input-placeholder': theme.muted,
+                '--chat-input-focus': `${theme.accent}22`,
+              }}
             />
             <button
               type="submit"
@@ -454,6 +460,17 @@ const ChatWindow = ({
           </form>
         </>
       )}
+
+      <style>{`
+        .chat-message-input::placeholder {
+          color: var(--chat-input-placeholder);
+          opacity: 1;
+        }
+
+        .chat-message-input:focus {
+          box-shadow: 0 0 0 3px var(--chat-input-focus);
+        }
+      `}</style>
     </div>
   );
 };

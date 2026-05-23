@@ -1,8 +1,7 @@
 import { useState } from 'react';
+import Avatar from '../components/common/Avatar';
 import MobileTopBar from '../components/layout/MobileTopBar';
 import useChat from '../hooks/useChat';
-
-const getUserInitial = (name) => name?.charAt(0).toUpperCase() || '?';
 
 const getActionConfig = (chatUser, isBusy) => {
   if (chatUser.isConnected) {
@@ -179,12 +178,12 @@ const Search = ({
                     border: `1px solid ${theme.border}`,
                   }}
                 >
-                  <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold"
+                  <Avatar
+                    name={chatUser.name}
+                    avatarUrl={chatUser.avatarUrl}
+                    className="h-11 w-11 rounded-xl text-sm"
                     style={{ background: theme.pageBackground, color: theme.text }}
-                  >
-                    {getUserInitial(chatUser.name)}
-                  </div>
+                  />
 
                   <div className="min-w-0 flex-1">
                     <p className="m-0 truncate text-sm font-semibold">{chatUser.name}</p>

@@ -1,7 +1,6 @@
 // components/chat/ProfilePopup.jsx
 import { useEffect, useRef } from 'react';
-
-const getUserInitial = (name) => name?.charAt(0).toUpperCase() || '?';
+import Avatar from '../common/Avatar';
 
 const ProfilePopup = ({
   user,
@@ -86,15 +85,15 @@ const ProfilePopup = ({
           style={{ borderColor: theme.border }}
         >
           {/* Avatar */}
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0"
+          <Avatar
+            name={user.name}
+            avatarUrl={user.avatarUrl}
+            className="w-10 h-10 rounded-xl text-sm"
             style={{
               background: theme.accent,
               color: theme.accentText,
             }}
-          >
-            {getUserInitial(user.name)}
-          </div>
+          />
 
           {/* Name & Email */}
           <div className="flex-1 min-w-0">
@@ -119,7 +118,7 @@ const ProfilePopup = ({
               className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 border-none cursor-pointer disabled:opacity-50"
               style={{
                 background: 'transparent',
-                color: theme.text,  // ✅ Fixed: Now using theme.text instead of hardcoded black
+                color: theme.text, 
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = theme.subtle;

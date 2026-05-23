@@ -1,5 +1,6 @@
 // ChatSidebar.jsx (Updated)
 import { useState, useRef } from 'react';
+import Avatar from '../common/Avatar';
 import ProfilePopup from './ProfilePopup';
 
 const formatLastMessageTime = (timestamp) => {
@@ -25,8 +26,6 @@ const formatLastMessageTime = (timestamp) => {
 
   return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
-
-const getUserInitial = (name) => name?.charAt(0).toUpperCase() || '?';
 
 const matchesSearch = (chatUser, searchQuery) =>
   chatUser.name?.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
@@ -177,10 +176,14 @@ const UserCard = ({
         }}
       >
         <div
-          className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center font-bold relative"
-          style={{ background: theme.pageBackground, color: theme.text }}
+          className="relative"
         >
-          {getUserInitial(chatUser.name)}
+          <Avatar
+            name={chatUser.name}
+            avatarUrl={chatUser.avatarUrl}
+            className="w-11 h-11 rounded-xl shrink-0 text-sm"
+            style={{ background: theme.pageBackground, color: theme.text }}
+          />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -220,20 +223,7 @@ const UserCard = ({
             >
               {displayMessage}
             </p>
-
-            {/* Unread count badge - only show when > 1 */}
-            {hasUnread && chatUser.unreadCount > 1 && (
-              <span
-                className="shrink-0 min-w-4.5 h-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-                style={{
-                  background: theme.accent,
-                  color: theme.accentText,
-                }}
-              >
-                {chatUser.unreadCount}
-              </span>
-            )}
-
+            
             {/* Single unread dot */}
             {hasUnread && chatUser.unreadCount === 1 && (
               <span

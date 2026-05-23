@@ -58,7 +58,7 @@ const Settings = ({
             Theme
           </h2>
           <p className="text-sm mb-5 md:mb-6 max-w-2xl" style={{ color: theme.muted }}>
-            Choose one of the 3 logo-inspired black and neutral themes for your chat app.
+            Choose one of the 2 themes for your chat app.
           </p>
 
           <div className="settings-theme-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
@@ -102,7 +102,7 @@ const Settings = ({
             Security
           </h2>
           <p className="text-sm mb-4 md:mb-5 max-w-2xl" style={{ color: theme.muted }}>
-            you can change your password using your current password.
+            You can change your password using your current password.
           </p>
 
           <button

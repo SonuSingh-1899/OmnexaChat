@@ -86,7 +86,8 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
   return (
     <AuthCard
       title="Sign Up"
-      subtitle="Create your profile and verify your account with OTP."
+      subtitle="Create your Omnexa profile, verify with OTP, and step into the same branded chat experience."
+      showLogo
       showBack
       onBack={onNavigateToLogin}
     >
@@ -134,10 +135,14 @@ const Signup = ({ onNavigateToLogin, onNavigateToForgotPassword, onNavigateToOtp
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full cursor-pointer rounded-2xl bg-zinc-950 px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:bg-zinc-800 disabled:opacity-60"
+          className="mt-1 w-full cursor-pointer rounded-2xl bg-[linear-gradient(135deg,#09090b_0%,#27272a_100%)] px-4 py-4 text-sm font-semibold text-white shadow-[0_18px_30px_rgba(17,24,39,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_34px_rgba(17,24,39,0.20)] disabled:opacity-60"
         >
           {loading ? "Creating account..." : "Sign Up"}
         </button>
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-xs leading-6 text-zinc-600">
+          We will send an OTP to your email so your account setup stays secure from the very first step.
+        </div>
 
         <div className="flex justify-center mt-4">
           <a

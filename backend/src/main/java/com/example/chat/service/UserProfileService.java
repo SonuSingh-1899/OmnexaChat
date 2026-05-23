@@ -32,6 +32,7 @@ import com.example.chat.repository.UserConnectionRepository;
 import com.example.chat.repository.UserRepository;
 
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class UserProfileService {
@@ -59,6 +60,9 @@ public class UserProfileService {
 
     @Autowired
     private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private AvatarStorageService avatarStorageService;
 
     public LocalDateTime getLatestMessageTime(String currentUserEmail, String otherEmail) {
         return chatMessageRepository.findLatestMessageTimeBetween(currentUserEmail, otherEmail);
@@ -100,10 +104,35 @@ public class UserProfileService {
         }
 
         if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
+            user.setAvatarUrl(request.getAvatarUrl().isBlank() ? null : request.getAvatarUrl());
         }
 
         userRepository.save(user);
+        return convertToResponse(user, RelationshipFlags.none(), true);
+    }
+
+    @Transactional
+    public UserProfileResponse uploadAvatar(MultipartFile file) {
+        User user = getCurrentUser();
+        String previousAvatarUrl = user.getAvatarUrl();
+        String uploadedAvatarUrl = avatarStorageService.storeAvatar(file);
+
+        user.setAvatarUrl(uploadedAvatarUrl);
+        userRepository.save(user);
+        avatarStorageService.deleteIfManaged(previousAvatarUrl);
+
+        return convertToResponse(user, RelationshipFlags.none(), true);
+    }
+
+    @Transactional
+    public UserProfileResponse removeAvatar() {
+        User user = getCurrentUser();
+        String previousAvatarUrl = user.getAvatarUrl();
+
+        user.setAvatarUrl(null);
+        userRepository.save(user);
+        avatarStorageService.deleteIfManaged(previousAvatarUrl);
+
         return convertToResponse(user, RelationshipFlags.none(), true);
     }
 
@@ -505,7 +534,7 @@ public List<UserProfileResponse> getConnectedUsers() {
 
                 return new RelationshipFlags(false, false, true);
             })
-            .orElse(RelationshipFlags.none());c
+            .orElse(RelationshipFlags.none());
     }
 
     private boolean isUserOnline(User user) {
