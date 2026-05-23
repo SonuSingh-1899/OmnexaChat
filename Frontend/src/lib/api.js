@@ -201,6 +201,17 @@ export const chatApi = {
   },
 };
 
+export const pushApi = {
+  registerToken: async (payload) => {
+    const { data } = await api.post('/api/push/tokens', payload);
+    return data;
+  },
+  unregisterToken: async (token) => {
+    const { data } = await api.delete(`/api/push/tokens?token=${encodeURIComponent(token)}`);
+    return data;
+  },
+};
+
 export const session = {
   getToken: () => localStorage.getItem(TOKEN_KEY),
   setToken: (token) => {

@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+
 ### STS ###
 .apt_generated
 .classpath
@@ -13,7 +14,9 @@ target/
 .springBeans
 .sts4-cache
 
+firebase/serviceAccount.json
 src/main/resources/application-local.properties
+backend/firebase/serviceAccount.json
 
 ### IntelliJ IDEA ###
 .idea

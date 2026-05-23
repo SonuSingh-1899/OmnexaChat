@@ -5,12 +5,15 @@ import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import MobileBottomBar from './components/layout/MobileBottomBar';
 import NotificationPanel from './components/layout/NotificationPanel';
+import PushNotificationPrompt from './components/layout/PushNotificationPrompt';
 import useNotifications from './hooks/useNotifications';
 import usePresence from './hooks/usePresence';
+import usePushNotifications from './hooks/usePushNotifications';
 import { FORGOT_PASSWORD_EMAIL_KEY, profileApi, session } from './lib/api';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import Search from './pages/Search';
 import Stories from './pages/Stories';
 import Settings from './pages/Settings';
 import Signup from './pages/Signup';
@@ -163,6 +166,26 @@ const App = () => {
 
   usePresence(currentUser);
 
+  const {
+    enableNotifications,
+    unregisterCurrentDevice,
+    dismissPrompt,
+    shouldShowPrompt,
+    isSyncing: isSyncingPushNotifications,
+  } = usePushNotifications({
+    user: currentUser,
+  });
+
+  const pushNotificationPrompt = currentUser && shouldShowPrompt ? (
+    <PushNotificationPrompt
+      onEnable={() => {
+        void enableNotifications();
+      }}
+      onDismiss={dismissPrompt}
+      isBusy={isSyncingPushNotifications}
+    />
+  ) : null;
+
   useEffect(() => {
     const handlePopState = () => {
       setPathname(getCurrentPath());
@@ -261,6 +284,8 @@ const App = () => {
   };
 
   const handleLogout = async () => {
+    await unregisterCurrentDevice();
+
     try {
       await profileApi.markOffline();
     } catch (error) {
@@ -458,6 +483,7 @@ const App = () => {
           onRefreshCurrentUser={loadCurrentUser}
         />
         {notificationPanel}
+        {pushNotificationPrompt}
       </>
     );
   }
@@ -480,6 +506,7 @@ const App = () => {
           onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
         />
         {notificationPanel}
+        {pushNotificationPrompt}
         {globalMobileBottomBar}
       </>
     );
@@ -501,6 +528,7 @@ const App = () => {
           onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
         />
         {notificationPanel}
+        {pushNotificationPrompt}
         {globalMobileBottomBar}
       </>
     );
@@ -520,6 +548,7 @@ const App = () => {
           onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
         />
         {notificationPanel}
+        {pushNotificationPrompt}
         {globalMobileBottomBar}
       </>
     );
@@ -540,6 +569,7 @@ const App = () => {
           onNavigateToChangePassword={() => navigateTo(ROUTES.changePassword)}
         />
         {notificationPanel}
+        {pushNotificationPrompt}
         {globalMobileBottomBar}
       </>
     );
@@ -547,16 +577,19 @@ const App = () => {
 
   if (pathname === ROUTES.changePassword && currentUser) {
     return (
-      <ChangePassword
-        theme={currentTheme}
-        onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
-        onSuccess={() => {
-          setAuthNotice('Password changed successfully! Please login again.');
-          session.clear();
-          setCurrentUser(null);
-          navigateTo(ROUTES.login);
-        }}
-      />
+      <>
+        <ChangePassword
+          theme={currentTheme}
+          onNavigateToDashboard={() => navigateTo(ROUTES.dashboard)}
+          onSuccess={() => {
+            setAuthNotice('Password changed successfully! Please login again.');
+            session.clear();
+            setCurrentUser(null);
+            navigateTo(ROUTES.login);
+          }}
+        />
+        {pushNotificationPrompt}
+      </>
     );
   }
 

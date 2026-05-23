@@ -13,6 +13,7 @@ import org.springframework.stereotype.Controller;
 
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.service.ChatService;
+import com.example.chat.service.FirebasePushNotificationService;
 import com.example.chat.service.ReadReceiptService;
 
 @Controller
@@ -26,6 +27,9 @@ public class ChatController {
 
     @Autowired
     private ReadReceiptService readReceiptService;
+
+    @Autowired
+    private FirebasePushNotificationService firebasePushNotificationService;
 
     @MessageMapping("/chat.send")
     @SendTo("/topic/public")
@@ -67,6 +71,8 @@ public class ChatController {
             buildInboxDestination(savedMessage.getSenderEmail()),
             deliveryReceipt
         );
+
+        firebasePushNotificationService.sendMessageNotification(savedMessage);
     }
 
     private String buildInboxDestination(String email) {

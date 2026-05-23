@@ -19,6 +19,7 @@ import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.exception.BusinessException;
 import com.example.chat.service.ChatService;
+import com.example.chat.service.FirebasePushNotificationService;
 import com.example.chat.service.ReadReceiptService;
 import com.example.chat.service.UserProfileService;
 
@@ -39,6 +40,9 @@ public class ChatRestController {
 
     @Autowired
     private UserProfileService userProfileService;
+
+    @Autowired
+    private FirebasePushNotificationService firebasePushNotificationService;
 
     @GetMapping("/messages/{roomId}")
     public ResponseEntity<List<ChatMessage>> getMessages1(
@@ -100,6 +104,11 @@ public class ChatRestController {
         deliveryReceipt.put("deliveredAt", message.getDeliveredAt());
 
         messagingTemplate.convertAndSend(buildInboxDestination(message.getSenderEmail()), deliveryReceipt);
+<<<<<<< HEAD
+=======
+
+        firebasePushNotificationService.sendMessageNotification(message);
+>>>>>>> b075237 (build a proper push notificatioin system after proper testing using firebase)
 
         return ResponseEntity.ok(message);
     }

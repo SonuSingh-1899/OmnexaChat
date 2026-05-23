@@ -13,6 +13,7 @@
     "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/vite": "^4.2.4",
     "axios": "^1.15.2",
+    "firebase": "^12.4.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "sockjs-client": "^1.6.1",
