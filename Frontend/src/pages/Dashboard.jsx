@@ -288,16 +288,6 @@ const Dashboard = ({
   }, [onPendingChatUserHandled, pendingChatUser, selectUser]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--app-page-background', theme.pageBackground);
-    document.body.style.background = theme.pageBackground;
-
-    return () => {
-      document.documentElement.style.removeProperty('--app-page-background');
-      document.body.style.removeProperty('background');
-    };
-  }, [theme.pageBackground]);
-
-  useEffect(() => {
     const syncViewportHeight = () => {
       const nextHeight = window.visualViewport?.height || window.innerHeight;
       document.documentElement.style.setProperty('--dashboard-app-height', `${nextHeight}px`);

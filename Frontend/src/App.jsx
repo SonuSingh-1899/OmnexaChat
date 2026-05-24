@@ -228,6 +228,24 @@ const App = () => {
   }, [themeKey]);
 
   useEffect(() => {
+    document.documentElement.style.setProperty('--app-page-background', currentTheme.pageBackground);
+    document.body.style.background = currentTheme.pageBackground;
+
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement('meta');
+      themeColorMeta.setAttribute('name', 'theme-color');
+      document.head.appendChild(themeColorMeta);
+    }
+    themeColorMeta.setAttribute('content', currentTheme.pageBackground);
+
+    return () => {
+      document.documentElement.style.removeProperty('--app-page-background');
+      document.body.style.removeProperty('background');
+    };
+  }, [currentTheme.pageBackground]);
+
+  useEffect(() => {
     if (!session.getToken()) {
       setIsLoading(false);
       return undefined;

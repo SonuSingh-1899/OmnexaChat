@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Avatar from '../common/Avatar';
 
-const SWIPE_REPLY_TRIGGER_DISTANCE = 62;
-const SWIPE_REPLY_MAX_HORIZONTAL_DRIFT = 48;
-const SWIPE_REPLY_MAX_TRANSLATE = 18;
+const SWIPE_REPLY_TRIGGER_DISTANCE = 100;
+const SWIPE_REPLY_MAX_HORIZONTAL_DRIFT = 28;
+const SWIPE_REPLY_MAX_TRANSLATE = 38;
 
 const getTimestampValue = (timestamp) => {
   const resolvedTimestamp = new Date(timestamp).getTime();
@@ -180,7 +180,7 @@ const ReplySnippet = ({
   isOutgoing = false,
 }) => (
   <div
-    className="mb-2 rounded-xl px-2.5 py-2"
+    className="mb-2 rounded-xl px-2.5 py-1"
     style={{
       background: isOutgoing ? `${theme.accentText}1c` : theme.pageBackground,
       borderLeft: `3px solid ${isOutgoing ? theme.accentText : theme.accent}`,
@@ -320,10 +320,10 @@ const MessageBubble = ({
             <div
               className={`pointer-events-none absolute ${
                 isOwnMessage ? 'right-2' : 'left-2'
-              } -top-7 rounded-full px-2 py-1 text-[10px] font-semibold`}
+              } top-0 rounded-full px-2 py-1 text-[10px] font-semibold`}
               style={{ background: theme.pageBackground, color: theme.accent }}
             >
-              Drag down to reply
+              replying.....
             </div>
           )}
 

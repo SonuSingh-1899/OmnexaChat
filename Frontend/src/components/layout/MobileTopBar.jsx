@@ -5,6 +5,7 @@ const MobileTopBar = ({ theme, notificationCount, onOpenNotifications }) => (
     className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 md:hidden"
     style={{
       background: theme.surface,
+      paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
       borderBottom: `1px solid ${theme.border}`,
       boxShadow: `0 10px 32px ${theme.shadow}`,
     }}
