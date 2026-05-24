@@ -33,12 +33,22 @@ public class ChatService {
         return chatRepository.findConversation(user1, user2, pageable);
     }
 
-    public ChatMessage createDirectMessage1(String senderEmail, String receiverEmail, String content) {
+    public ChatMessage createDirectMessage1(
+        String senderEmail,
+        String receiverEmail,
+        String content,
+        Long replyToMessageId,
+        String replyToSenderEmail,
+        String replyToContent
+    ) {
         ChatMessage message = new ChatMessage();
         message.setSenderEmail(senderEmail);
         message.setReceiverEmail(receiverEmail);
         message.setContent(content);
         message.setRoomId(buildRoomId1(senderEmail, receiverEmail));
+        message.setReplyToMessageId(replyToMessageId);
+        message.setReplyToSenderEmail(replyToSenderEmail);
+        message.setReplyToContent(replyToContent);
         message.setType(MessageType.CHAT);
         message.setDeliveredAt(LocalDateTime.now());
         return saveMessage(message);

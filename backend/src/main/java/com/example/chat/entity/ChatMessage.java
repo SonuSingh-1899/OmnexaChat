@@ -17,7 +17,9 @@ import lombok.Setter;
 @Entity
 @Table(name = "chat_messages", indexes = {
     @Index(name = "idx_timestamp", columnList = "timestamp"),
-    @Index(name = "idx_room_timestamp", columnList = "roomId, timestamp")
+    @Index(name = "idx_room_timestamp", columnList = "roomId, timestamp"),
+    @Index(name = "idx_receiver_read", columnList = "receiverEmail, isread"),
+    @Index(name = "idx_sender_receiver_read", columnList = "senderEmail, receiverEmail, isread")
 })
 public class ChatMessage {
     @Id
@@ -29,6 +31,10 @@ public class ChatMessage {
     @Column(columnDefinition = "TEXT")
     private String content;
     private String roomId;
+    private Long replyToMessageId;
+    private String replyToSenderEmail;
+    @Column(columnDefinition = "TEXT")
+    private String replyToContent;
 
     private String isread; // Keep for backward compatibility, but we'll enhance
     

@@ -205,6 +205,7 @@ const Dashboard = ({
   onNavigateToStories,
   onNavigateToSettings,
   onRefreshCurrentUser,
+  onNotifyMessage,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCompactMobile, setIsCompactMobile] = useState(getCurrentCompactMode);
@@ -233,6 +234,7 @@ const Dashboard = ({
     messages,
     newMessage,
     setNewMessage,
+    replyingTo,
     loading,
     sending,
     searchingUsers,
@@ -241,6 +243,8 @@ const Dashboard = ({
     unreadTotal,
     selectUser,
     clearSelectedUser,
+    startReply,
+    cancelReply,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,
@@ -252,6 +256,7 @@ const Dashboard = ({
     user,
     searchQuery: effectiveSearchQuery,
     onConnectionChange: onRefreshCurrentUser,
+    onNotifyMessage,
   });
 
   useEffect(() => {
@@ -415,6 +420,7 @@ const Dashboard = ({
             selectedUser={selectedUser}
             messages={messages}
             newMessage={newMessage}
+            replyingTo={replyingTo}
             loading={loading}
             sending={sending}
             currentUserEmail={user?.email}
@@ -426,7 +432,9 @@ const Dashboard = ({
             onAcceptRequest={acceptFollowRequest}
             onUnfollow={unfollowUser}
             onBack={clearSelectedUser}
-            onMarkAsRead={markConversationAsRead}  
+            onMarkAsRead={markConversationAsRead}
+            onReplyMessage={startReply}
+            onCancelReply={cancelReply}
           />
           </div>
         )}

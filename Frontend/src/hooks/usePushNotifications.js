@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { deleteToken, getToken, onMessage } from 'firebase/messaging';
 import { pushApi } from '../lib/api';
 import { FIREBASE_VAPID_KEY, getFirebaseMessaging } from '../lib/firebase';
@@ -6,6 +6,8 @@ import { FIREBASE_VAPID_KEY, getFirebaseMessaging } from '../lib/firebase';
 const MESSAGING_SW_URL = '/firebase-messaging-sw.js';
 const MESSAGING_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
 const TOKEN_STORAGE_KEY = 'pushNotificationToken';
+const NOTIFICATION_ICON = '/icons/manifest-icon-192.maskable.png';
+const RECENT_NOTIFICATION_TTL_MS = 10000;
 
 const getDismissKey = (email) => `pushNotificationPromptDismissed:${email || 'guest'}`;
 
@@ -72,6 +74,28 @@ const ensureMessagingServiceWorker = async () => {
   });
 };
 
+const buildNotificationDetails = ({ title, body, data = {} }) => ({
+  title: title || `New message from ${data.senderName || data.senderEmail || 'Omnexa'}`,
+  options: {
+    body: body || data.content || 'You have a new chat message.',
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_ICON,
+    tag: data.senderEmail ? `chat-${data.senderEmail}` : 'omnexa-chat-message',
+    data: {
+      url: data.url || '/dashboard',
+      senderEmail: data.senderEmail || '',
+      messageId: data.messageId || '',
+    },
+  },
+});
+
+const buildNotificationDetailsFromFirebasePayload = (payload) =>
+  buildNotificationDetails({
+    title: payload?.notification?.title,
+    body: payload?.notification?.body,
+    data: payload?.data || {},
+  });
+
 export default function usePushNotifications({ user }) {
   const [permission, setPermission] = useState(() =>
     typeof window !== 'undefined' && 'Notification' in window
@@ -80,8 +104,8 @@ export default function usePushNotifications({ user }) {
   );
   const [isSupported, setIsSupported] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [lastForegroundMessage, setLastForegroundMessage] = useState(null);
   const [promptDismissed, setPromptDismissed] = useState(() => readDismissedPrompt(user?.email));
+  const recentlyShownNotificationsRef = useRef(new Map());
 
   useEffect(() => {
     setPromptDismissed(readDismissedPrompt(user?.email));
@@ -109,6 +133,50 @@ export default function usePushNotifications({ user }) {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  const showBrowserNotification = useCallback(async ({ title, body, data = {} }) => {
+    if (!canUsePushNotifications() || Notification.permission !== 'granted') {
+      return false;
+    }
+
+    const messageId = String(data.messageId || '').trim();
+    const now = Date.now();
+
+    for (const [notificationId, shownAt] of recentlyShownNotificationsRef.current.entries()) {
+      if (now - shownAt > RECENT_NOTIFICATION_TTL_MS) {
+        recentlyShownNotificationsRef.current.delete(notificationId);
+      }
+    }
+
+    if (messageId) {
+      const lastShownAt = recentlyShownNotificationsRef.current.get(messageId);
+      if (lastShownAt && now - lastShownAt <= RECENT_NOTIFICATION_TTL_MS) {
+        return false;
+      }
+
+      recentlyShownNotificationsRef.current.set(messageId, now);
+    }
+
+    const notificationDetails = buildNotificationDetails({ title, body, data });
+
+    try {
+      const serviceWorkerRegistration = await ensureMessagingServiceWorker().catch(() => null);
+
+      if (serviceWorkerRegistration?.showNotification) {
+        await serviceWorkerRegistration.showNotification(
+          notificationDetails.title,
+          notificationDetails.options
+        );
+        return true;
+      }
+
+      new Notification(notificationDetails.title, notificationDetails.options);
+      return true;
+    } catch (error) {
+      console.error('Failed to show browser notification:', error);
+      return false;
+    }
   }, []);
 
   const syncPushToken = useCallback(async () => {
@@ -230,7 +298,11 @@ export default function usePushNotifications({ user }) {
       }
 
       unsubscribe = onMessage(messaging, (payload) => {
-        setLastForegroundMessage(payload);
+        if (document.visibilityState === 'visible') {
+          return;
+        }
+
+        void showBrowserNotification(buildNotificationDetailsFromFirebasePayload(payload));
       });
     };
 
@@ -239,7 +311,7 @@ export default function usePushNotifications({ user }) {
     return () => {
       unsubscribe();
     };
-  }, [isSupported, permission, user?.email]);
+  }, [isSupported, permission, showBrowserNotification, user?.email]);
 
   const shouldShowPrompt = useMemo(
     () => Boolean(user?.email) && isSupported && permission === 'default' && !promptDismissed,
@@ -254,6 +326,6 @@ export default function usePushNotifications({ user }) {
     permission,
     isSupported,
     isSyncing,
-    lastForegroundMessage,
+    showBrowserNotification,
   };
 }

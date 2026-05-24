@@ -172,6 +172,7 @@ const App = () => {
     dismissPrompt,
     shouldShowPrompt,
     isSyncing: isSyncingPushNotifications,
+    showBrowserNotification,
   } = usePushNotifications({
     user: currentUser,
   });
@@ -481,6 +482,7 @@ const App = () => {
           onNavigateToStories={() => navigateTo(ROUTES.stories)}
           onNavigateToSettings={() => navigateTo(ROUTES.settings)}
           onRefreshCurrentUser={loadCurrentUser}
+          onNotifyMessage={showBrowserNotification}
         />
         {notificationPanel}
         {pushNotificationPrompt}

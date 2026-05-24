@@ -79,7 +79,10 @@ public class ChatRestController {
         ChatMessage message = chatService.createDirectMessage1(
             userProfileService.getCurrentUserEmail(),
             request.getReceiverEmail(),
-            request.getContent()
+            request.getContent(),
+            request.getReplyToMessageId(),
+            request.getReplyToSenderEmail(),
+            request.getReplyToContent()
         );
 
         messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), message);

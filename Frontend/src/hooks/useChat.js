@@ -31,6 +31,18 @@ const updateUserPreview = (userList, email, content, timestamp) =>
       : chatUser
   );
 
+const createReplySnapshot = (message) => {
+  if (!message?.id || !message?.content || !message?.senderEmail) {
+    return null;
+  }
+
+  return {
+    id: message.id,
+    content: message.content,
+    senderEmail: message.senderEmail,
+  };
+};
+
 const findUserByEmail = (email, ...userCollections) => {
   if (!email) {
     return null;
@@ -44,7 +56,7 @@ const findUserByEmail = (email, ...userCollections) => {
   return null;
 };
 
-export default function useChat({ user, searchQuery, onConnectionChange }) {
+export default function useChat({ user, searchQuery, onConnectionChange, onNotifyMessage }) {
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
@@ -57,13 +69,16 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
   const [actionUserId, setActionUserId] = useState(null);
   const [unreadCounts, setUnreadCounts] = useState({});
   const [unreadTotal, setUnreadTotal] = useState(0);
+  const [replyingTo, setReplyingTo] = useState(null);
+
+  const normalizeUnreadCount = useCallback((nextCount) => Math.max(0, Number(nextCount) || 0), []);
 
   const applyUnreadCountUpdate = useCallback((senderEmail, nextCount) => {
     if (!senderEmail) {
       return;
     }
 
-    const normalizedCount = Math.max(0, Number(nextCount) || 0);
+    const normalizedCount = normalizeUnreadCount(nextCount);
 
     setUnreadCounts((prev) => {
       const previousCount = prev[senderEmail] || 0;
@@ -87,7 +102,72 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
           : chatUser
       )
     );
-  }, []);
+  }, [normalizeUnreadCount]);
+
+  const handleSidebarMessageEvent = useCallback(({ message, unreadCount, isActiveConversation }) => {
+    if (!message?.senderEmail) {
+      return;
+    }
+
+    setConnectedUsers((currentUsers) =>
+      currentUsers.map((chatUser) => {
+        if (chatUser.email !== message.senderEmail) {
+          return chatUser;
+        }
+
+        const fallbackUnreadCount = isActiveConversation
+          ? 0
+          : (chatUser.unreadCount || 0) + 1;
+        const resolvedUnreadCount =
+          unreadCount === undefined
+            ? fallbackUnreadCount
+            : normalizeUnreadCount(unreadCount);
+
+        return {
+          ...chatUser,
+          lastMessage: message.content,
+          lastMessageTime: message.timestamp,
+          unreadCount: resolvedUnreadCount,
+        };
+      })
+    );
+
+    setUnreadCounts((previousUnreadCounts) => {
+      const previousCount = previousUnreadCounts[message.senderEmail] || 0;
+      const fallbackUnreadCount = isActiveConversation ? 0 : previousCount + 1;
+      const resolvedUnreadCount =
+        unreadCount === undefined
+          ? fallbackUnreadCount
+          : normalizeUnreadCount(unreadCount);
+
+      if (previousCount === resolvedUnreadCount) {
+        return previousUnreadCounts;
+      }
+
+      setUnreadTotal((total) => Math.max(0, total - previousCount + resolvedUnreadCount));
+
+      return {
+        ...previousUnreadCounts,
+        [message.senderEmail]: resolvedUnreadCount,
+      };
+    });
+
+    setSelectedUser((currentSelectedUser) => {
+      const isCurrentConversation =
+        currentSelectedUser?.email === message.senderEmail ||
+        currentSelectedUser?.email === message.receiverEmail;
+
+      if (!isCurrentConversation) {
+        return currentSelectedUser;
+      }
+
+      return {
+        ...currentSelectedUser,
+        lastMessage: message.content,
+        lastMessageTime: message.timestamp,
+      };
+    });
+  }, [normalizeUnreadCount]);
 
   const refreshConnectedUsers = useCallback(async () => {
     if (!user?.email) return;
@@ -188,45 +268,36 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
 
     if (isCurrentUserSender) return;
 
-    setConnectedUsers((currentUsers) =>
-      currentUsers.map((chatUser) => {
-        if (chatUser.email !== incomingMessage.senderEmail) {
-          return chatUser;
-        }
+    if (document.visibilityState !== 'visible') {
+      const senderName =
+        connectedUsers.find((chatUser) => chatUser.email === incomingMessage.senderEmail)?.name ||
+        selectedUser?.name ||
+        incomingMessage.senderEmail;
 
-        return {
-          ...chatUser,
-          lastMessage: incomingMessage.content,
-          lastMessageTime: incomingMessage.timestamp,
-          unreadCount: isFromSelectedUser ? 0 : (chatUser.unreadCount || 0) + 1,
-        };
-      })
-    );
-
-    if (selectedUser?.email === incomingMessage.senderEmail) {
-      setSelectedUser((current) => ({
-        ...current,
-        lastMessage: incomingMessage.content,
-        lastMessageTime: incomingMessage.timestamp,
-      }));
+      void onNotifyMessage?.({
+        title: `New message from ${senderName}`,
+        body: incomingMessage.content,
+        data: {
+          senderEmail: incomingMessage.senderEmail,
+          messageId: String(incomingMessage.id || ''),
+          content: incomingMessage.content || '',
+          url: '/dashboard',
+        },
+      });
     }
 
-    if (!isFromSelectedUser) {
-      applyUnreadCountUpdate(
-        incomingMessage.senderEmail,
-        (unreadCounts[incomingMessage.senderEmail] || 0) + 1
-      );
-    } else if (selectedUser?.isConnected) {
+    if (isFromSelectedUser && selectedUser?.isConnected) {
       setTimeout(() => {
         markConversationAsRead(incomingMessage.senderEmail);
       }, 100);
     }
   }, [
-    applyUnreadCountUpdate,
     markConversationAsRead,
     selectedUser?.email,
     selectedUser?.isConnected,
-    unreadCounts,
+    selectedUser?.name,
+    connectedUsers,
+    onNotifyMessage,
     user?.email,
   ]);
 
@@ -303,6 +374,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     currentUserEmail: user?.email,
     selectedUserEmail: selectedUser?.email || '',
     onMessageReceived: handleIncomingMessage,
+    onMessageEnvelope: handleSidebarMessageEvent,
     onUserLastMessageUpdate: handleUserPreviewUpdate,
     onReadReceipt: handleReadReceipt,
     onUnreadCountUpdate: (senderEmail, unreadCount) => {
@@ -371,6 +443,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
 
   const selectUser = useCallback(async (chatUser) => {
     if (!chatUser?.email) return;
+    setReplyingTo(null);
     setSelectedUser(chatUser);
     await loadConversation(chatUser);
     if (chatUser.isConnected && chatUser.email) {
@@ -381,6 +454,20 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
   const clearSelectedUser = useCallback(() => {
     setSelectedUser(null);
     setMessages([]);
+    setReplyingTo(null);
+  }, []);
+
+  const startReply = useCallback((message) => {
+    const replySnapshot = createReplySnapshot(message);
+    if (!replySnapshot) {
+      return;
+    }
+
+    setReplyingTo(replySnapshot);
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyingTo(null);
   }, []);
 
   const syncAfterRelationshipChange = useCallback(async () => {
@@ -487,6 +574,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     const content = newMessage.trim();
     const tempMessageId = Date.now();
     const sentAt = new Date().toISOString();
+    const activeReply = replyingTo;
     const temporaryMessage = {
       id: tempMessageId,
       senderEmail: user.email,
@@ -494,8 +582,12 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       content,
       timestamp: sentAt,
       isTemp: true,
+      replyToMessageId: activeReply?.id || null,
+      replyToSenderEmail: activeReply?.senderEmail || '',
+      replyToContent: activeReply?.content || '',
     };
     setNewMessage('');
+    setReplyingTo(null);
     setSendingMessage(true);
     setMessages((currentMessages) => sortMessagesByTime([...currentMessages, temporaryMessage]));
     setConnectedUsers((currentUsers) =>
@@ -514,6 +606,9 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       const savedMessage = await chatApi.sendMessage({
         receiverEmail: selectedUser.email,
         content,
+        replyToMessageId: activeReply?.id || null,
+        replyToSenderEmail: activeReply?.senderEmail || '',
+        replyToContent: activeReply?.content || '',
       });
       setMessages((currentMessages) => {
         const messagesWithoutTemp = currentMessages.filter(
@@ -523,6 +618,9 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
       });
     } catch (error) {
       console.error('Failed to send message:', error);
+      if (activeReply) {
+        setReplyingTo(activeReply);
+      }
       setMessages((currentMessages) =>
         currentMessages.map((message) =>
           message.id === tempMessageId
@@ -533,7 +631,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     } finally {
       setSendingMessage(false);
     }
-  }, [newMessage, selectedUser, sendingMessage, user?.email]);
+  }, [newMessage, replyingTo, selectedUser, sendingMessage, user?.email]);
 
   return {
     users: connectedUsers,
@@ -543,6 +641,7 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     messages,
     newMessage,
     setNewMessage,
+    replyingTo,
     loading: loadingMessages,
     sending: sendingMessage,
     searchingUsers,
@@ -551,6 +650,8 @@ export default function useChat({ user, searchQuery, onConnectionChange }) {
     unreadTotal,
     selectUser,
     clearSelectedUser,
+    startReply,
+    cancelReply,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,

@@ -10,4 +10,10 @@ public class ChatMessageRequest {
 
     @NotBlank(message = "Message content is required")
     private String content;
+
+    private Long replyToMessageId;
+
+    private String replyToSenderEmail;
+
+    private String replyToContent;
 }

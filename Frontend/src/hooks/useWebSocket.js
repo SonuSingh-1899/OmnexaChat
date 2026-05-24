@@ -9,6 +9,7 @@ const useWebSocket = ({
   currentUserEmail,
   selectedUserEmail,
   onMessageReceived,
+  onMessageEnvelope,
   onUserLastMessageUpdate,
   onReadReceipt,
   onUnreadCountUpdate,
@@ -16,6 +17,7 @@ const useWebSocket = ({
   const stompClientRef = useRef(null);
   const selectedUserEmailRef = useRef(selectedUserEmail);
   const onMessageReceivedRef = useRef(onMessageReceived);
+  const onMessageEnvelopeRef = useRef(onMessageEnvelope);
   const onUserLastMessageUpdateRef = useRef(onUserLastMessageUpdate);
   const onReadReceiptRef = useRef(onReadReceipt);
   const onUnreadCountUpdateRef = useRef(onUnreadCountUpdate);
@@ -27,6 +29,10 @@ const useWebSocket = ({
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
   }, [onMessageReceived]);
+
+  useEffect(() => {
+    onMessageEnvelopeRef.current = onMessageEnvelope;
+  }, [onMessageEnvelope]);
 
   useEffect(() => {
     onUserLastMessageUpdateRef.current = onUserLastMessageUpdate;
@@ -100,23 +106,40 @@ const useWebSocket = ({
             } else if (data.type === 'MESSAGE') {
               const message = data.message;
               const isActiveConversation = message.senderEmail === selectedUserEmailRef.current;
+              const nextUnreadCount = isActiveConversation ? 0 : data.unreadCount;
               console.log(`Message from ${message.senderEmail}, unreadCount: ${data.unreadCount}`);
 
-              onUserLastMessageUpdateRef.current?.(message);
+              if (onMessageEnvelopeRef.current) {
+                onMessageEnvelopeRef.current({
+                  message,
+                  unreadCount: nextUnreadCount,
+                  isActiveConversation,
+                });
+              } else {
+                onUserLastMessageUpdateRef.current?.(message);
 
-              if (data.unreadCount !== undefined && onUnreadCountUpdateRef.current) {
-                onUnreadCountUpdateRef.current(
-                  message.senderEmail,
-                  isActiveConversation ? 0 : data.unreadCount
-                );
+                if (data.unreadCount !== undefined && onUnreadCountUpdateRef.current) {
+                  onUnreadCountUpdateRef.current(message.senderEmail, nextUnreadCount);
+                }
               }
 
               if (isActiveConversation) {
                 onMessageReceivedRef.current?.(message);
               }
             } else if (data.senderEmail || data.content) {
-              onUserLastMessageUpdateRef.current?.(data);
-              if (data.senderEmail === selectedUserEmailRef.current) {
+              const isActiveConversation = data.senderEmail === selectedUserEmailRef.current;
+
+              if (onMessageEnvelopeRef.current) {
+                onMessageEnvelopeRef.current({
+                  message: data,
+                  unreadCount: undefined,
+                  isActiveConversation,
+                });
+              } else {
+                onUserLastMessageUpdateRef.current?.(data);
+              }
+
+              if (isActiveConversation) {
                 onMessageReceivedRef.current?.(data);
               }
             } else if (data.type === 'DELIVERED') {
