@@ -11,12 +11,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.chat.DTO.ChatMessageEditRequest;
+import com.example.chat.DTO.ChatMessageDeletionResponse;
 import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.exception.BusinessException;
@@ -102,16 +104,34 @@ public class ChatRestController {
             request.getContent()
         );
 
-        boolean isLatestInConversation = chatService.isLatestMessageInConversation(updatedMessage);
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "MESSAGE_EDITED");
         payload.put("message", updatedMessage);
-        payload.put("isLatestInConversation", isLatestInConversation);
 
         messagingTemplate.convertAndSend(buildInboxDestination(updatedMessage.getSenderEmail()), payload);
         messagingTemplate.convertAndSend(buildInboxDestination(updatedMessage.getReceiverEmail()), payload);
 
         return ResponseEntity.ok(updatedMessage);
+    }
+
+    @DeleteMapping("/messages/{messageId}")
+    public ResponseEntity<ChatMessageDeletionResponse> deleteMessage(@PathVariable Long messageId) {
+        ChatMessageDeletionResponse deletedMessage = chatService.deleteMessage(
+            userProfileService.getCurrentUserEmail(),
+            messageId
+        );
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "MESSAGE_DELETED");
+        payload.put("messageId", deletedMessage.getMessageId());
+        payload.put("senderEmail", deletedMessage.getSenderEmail());
+        payload.put("receiverEmail", deletedMessage.getReceiverEmail());
+        payload.put("latestMessage", deletedMessage.getLatestMessage());
+
+        messagingTemplate.convertAndSend(buildInboxDestination(deletedMessage.getSenderEmail()), payload);
+        messagingTemplate.convertAndSend(buildInboxDestination(deletedMessage.getReceiverEmail()), payload);
+
+        return ResponseEntity.ok(deletedMessage);
     }
 
     private String buildInboxDestination(String email) {

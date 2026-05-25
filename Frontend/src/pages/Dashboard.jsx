@@ -249,6 +249,7 @@ const Dashboard = ({
     cancelReply,
     startEditingMessage,
     cancelEditingMessage,
+    deleteMessage,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,
@@ -433,6 +434,7 @@ const Dashboard = ({
             onCancelReply={cancelReply}
             onStartEditingMessage={startEditingMessage}
             onCancelEditingMessage={cancelEditingMessage}
+            onDeleteMessage={deleteMessage}
           />
           </div>
         )}

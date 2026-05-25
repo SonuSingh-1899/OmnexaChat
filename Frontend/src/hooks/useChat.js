@@ -41,6 +41,15 @@ const updateSelectedUserPreview = (selectedUser, content, timestamp) =>
       }
     : selectedUser;
 
+const clearSelectedUserPreview = (selectedUser) =>
+  selectedUser
+    ? {
+        ...selectedUser,
+        lastMessage: null,
+        lastMessageTime: null,
+      }
+    : selectedUser;
+
 const createReplySnapshot = (message) => {
   if (!message?.id || !message?.content || !message?.senderEmail) {
     return null;
@@ -353,6 +362,34 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     });
   }, []);
 
+  const applyConversationPreview = useCallback((participantEmail, latestMessage) => {
+    setConnectedUsers((currentUsers) =>
+      currentUsers.map((chatUser) =>
+        chatUser.email === participantEmail
+          ? {
+              ...chatUser,
+              lastMessage: latestMessage?.content || null,
+              lastMessageTime: latestMessage?.timestamp || null,
+            }
+          : chatUser
+      )
+    );
+
+    setSelectedUser((currentSelectedUser) => {
+      if (currentSelectedUser?.email !== participantEmail) {
+        return currentSelectedUser;
+      }
+
+      return latestMessage
+        ? updateSelectedUserPreview(
+            currentSelectedUser,
+            latestMessage.content,
+            latestMessage.timestamp
+          )
+        : clearSelectedUserPreview(currentSelectedUser);
+    });
+  }, []);
+
   const handleReadReceipt = useCallback((receipt) => {
     console.log('Received message status:', receipt);
 
@@ -392,46 +429,77 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     }
   }, [applyUnreadCountUpdate, user?.email]);
 
-  const handleMessageEdited = useCallback(({ message, isLatestInConversation }) => {
+  const handleMessageEdited = useCallback(({ message }) => {
     if (!message?.id) {
       return;
     }
 
-    setMessages((currentMessages) =>
-      sortMessagesByTime(
+    setMessages((currentMessages) => {
+      const orderedCurrentMessages = sortMessagesByTime(currentMessages);
+      const latestCurrentMessage = orderedCurrentMessages[orderedCurrentMessages.length - 1];
+      const isLatestInConversation = latestCurrentMessage?.id === message.id;
+
+      if (isLatestInConversation) {
+        setConnectedUsers((currentUsers) =>
+          updateUserPreview(
+            currentUsers,
+            message.senderEmail === user?.email ? message.receiverEmail : message.senderEmail,
+            message.content,
+            message.timestamp
+          )
+        );
+
+        setSelectedUser((currentSelectedUser) => {
+          const isConversationMatch =
+            currentSelectedUser?.email === message.senderEmail ||
+            currentSelectedUser?.email === message.receiverEmail;
+
+          return isConversationMatch
+            ? updateSelectedUserPreview(currentSelectedUser, message.content, message.timestamp)
+            : currentSelectedUser;
+        });
+      }
+
+      return sortMessagesByTime(
         currentMessages.map((currentMessage) =>
           currentMessage.id === message.id
             ? { ...currentMessage, ...message }
             : currentMessage
         )
-      )
-    );
-
-    if (isLatestInConversation) {
-      setConnectedUsers((currentUsers) =>
-        updateUserPreview(
-          currentUsers,
-          message.senderEmail === user?.email ? message.receiverEmail : message.senderEmail,
-          message.content,
-          message.timestamp
-        )
       );
-
-      setSelectedUser((currentSelectedUser) => {
-        const isConversationMatch =
-          currentSelectedUser?.email === message.senderEmail ||
-          currentSelectedUser?.email === message.receiverEmail;
-
-        return isConversationMatch
-          ? updateSelectedUserPreview(currentSelectedUser, message.content, message.timestamp)
-          : currentSelectedUser;
-      });
-    }
+    });
 
     setEditingMessage((currentEditingMessage) =>
       currentEditingMessage?.id === message.id ? null : currentEditingMessage
     );
   }, [user?.email]);
+
+  const handleMessageDeleted = useCallback(({ messageId, latestMessage }) => {
+    if (!messageId) {
+      return;
+    }
+
+    setMessages((currentMessages) => {
+      const removedMessage = currentMessages.find((currentMessage) => currentMessage.id === messageId);
+      const nextMessages = currentMessages.filter((currentMessage) => currentMessage.id !== messageId);
+
+      if (removedMessage) {
+        const participantEmail =
+          removedMessage.senderEmail === user?.email
+            ? removedMessage.receiverEmail
+            : removedMessage.senderEmail;
+        const fallbackLatestMessage =
+          latestMessage ?? sortMessagesByTime(nextMessages)[nextMessages.length - 1] ?? null;
+        applyConversationPreview(participantEmail, fallbackLatestMessage);
+      }
+
+      return sortMessagesByTime(nextMessages);
+    });
+
+    setEditingMessage((currentEditingMessage) =>
+      currentEditingMessage?.id === messageId ? null : currentEditingMessage
+    );
+  }, [applyConversationPreview, user?.email]);
 
   const handleTypingStatus = useCallback(({ senderEmail, isTyping }) => {
     if (!senderEmail) {
@@ -454,6 +522,7 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     onUserLastMessageUpdate: handleUserPreviewUpdate,
     onReadReceipt: handleReadReceipt,
     onMessageEdited: handleMessageEdited,
+    onMessageDeleted: handleMessageDeleted,
     onTypingStatus: handleTypingStatus,
     onUnreadCountUpdate: (senderEmail, unreadCount) => {
       applyUnreadCountUpdate(senderEmail, unreadCount);
@@ -584,6 +653,36 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     setEditingMessage(null);
     setNewMessage('');
   }, []);
+
+  const deleteMessage = useCallback(async (message) => {
+    if (!message?.id || message.senderEmail !== user?.email) {
+      return;
+    }
+
+    const currentMessagesSnapshot = sortMessagesByTime(messages);
+    const nextMessagesSnapshot = currentMessagesSnapshot.filter(
+      (currentMessage) => currentMessage.id !== message.id
+    );
+    const participantEmail =
+      message.senderEmail === user?.email ? message.receiverEmail : message.senderEmail;
+    const previousLatestMessage = currentMessagesSnapshot[currentMessagesSnapshot.length - 1] || null;
+    const nextLatestMessage = nextMessagesSnapshot[nextMessagesSnapshot.length - 1] || null;
+
+    setEditingMessage((currentEditingMessage) =>
+      currentEditingMessage?.id === message.id ? null : currentEditingMessage
+    );
+    setMessages(nextMessagesSnapshot);
+    applyConversationPreview(participantEmail, nextLatestMessage);
+
+    try {
+      const deletedMessage = await chatApi.deleteMessage(message.id);
+      handleMessageDeleted(deletedMessage);
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      setMessages(currentMessagesSnapshot);
+      applyConversationPreview(participantEmail, previousLatestMessage);
+    }
+  }, [applyConversationPreview, handleMessageDeleted, messages, user?.email]);
 
   const syncAfterRelationshipChange = useCallback(async () => {
     await Promise.all([refreshConnectedUsers(), refreshSearchResults(), fetchUnreadCounts()]);
@@ -723,7 +822,8 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
       }
 
       try {
-        await chatApi.editMessage(editingMessage.id, { content });
+        const updatedMessage = await chatApi.editMessage(editingMessage.id, { content });
+        handleMessageEdited({ message: updatedMessage });
       } catch (error) {
         console.error('Failed to edit message:', error);
         setEditingMessage((currentEditingMessage) => currentEditingMessage || editingMessage);
@@ -807,7 +907,7 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     } finally {
       setSendingMessage(false);
     }
-  }, [editingMessage, messages, newMessage, replyingTo, selectedUser, sendingMessage, stopTyping, user?.email]);
+  }, [editingMessage, handleMessageEdited, messages, newMessage, replyingTo, selectedUser, sendingMessage, stopTyping, user?.email]);
 
   useEffect(() => {
     const receiverEmail = selectedUser?.isConnected ? selectedUser.email : '';
@@ -884,6 +984,7 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     cancelReply,
     startEditingMessage,
     cancelEditingMessage,
+    deleteMessage,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,

@@ -191,6 +191,10 @@ export const chatApi = {
     const { data } = await api.put(`/api/chat/messages/${messageId}`, payload);
     return data;
   },
+  deleteMessage: async (messageId) => {
+    const { data } = await api.delete(`/api/chat/messages/${messageId}`);
+    return data;
+  },
   markAsRead: async (senderEmail) => {
     const { data } = await api.post(`/api/chat/read/${senderEmail}`);
     return data;

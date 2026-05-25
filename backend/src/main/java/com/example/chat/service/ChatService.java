@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.example.chat.DTO.ChatMessageDeletionResponse;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.entity.ChatMessage.MessageType;
 import com.example.chat.exception.BusinessException;
@@ -86,12 +87,29 @@ public class ChatService {
         return chatRepository.save(message);
     }
 
-    public boolean isLatestMessageInConversation(ChatMessage message) {
-        if (message == null || message.getRoomId() == null) {
-            return false;
+    public ChatMessageDeletionResponse deleteMessage(String currentUserEmail, Long messageId) {
+        ChatMessage message = chatRepository.findById(messageId)
+            .orElseThrow(() -> new BusinessException("Message not found"));
+
+        if (!message.getSenderEmail().equalsIgnoreCase(currentUserEmail)) {
+            throw new BusinessException("You can delete only your own messages");
         }
 
-        ChatMessage latestMessage = chatRepository.findTopByRoomIdOrderByTimestampDesc(message.getRoomId());
-        return latestMessage != null && latestMessage.getId().equals(message.getId());
+        String roomId = message.getRoomId();
+        String senderEmail = message.getSenderEmail();
+        String receiverEmail = message.getReceiverEmail();
+
+        chatRepository.delete(message);
+
+        ChatMessage latestMessage = roomId == null
+            ? null
+            : chatRepository.findTopByRoomIdOrderByTimestampDesc(roomId);
+
+        return new ChatMessageDeletionResponse(
+            messageId,
+            senderEmail,
+            receiverEmail,
+            latestMessage
+        );
     }
 }

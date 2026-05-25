@@ -4,6 +4,7 @@ import Avatar from '../common/Avatar';
 const SWIPE_REPLY_TRIGGER_DISTANCE = 100;
 const SWIPE_REPLY_MAX_HORIZONTAL_DRIFT = 28;
 const SWIPE_REPLY_MAX_TRANSLATE = 38;
+const ACTION_MENU_WIDTH = 180;
 
 const getTimestampValue = (timestamp) => {
   const resolvedTimestamp = new Date(timestamp).getTime();
@@ -50,6 +51,24 @@ const getReplyAuthorLabel = (senderEmail, currentUserEmail, selectedUser) => {
     return 'You';
   }
   return selectedUser?.name || senderEmail;
+};
+
+const getActionMenuPosition = (rect) => {
+  const horizontalPadding = 12;
+  const verticalGap = 8;
+  const defaultTop = (rect?.top || 0) - 96;
+  const defaultLeft = (rect?.right || 0) - ACTION_MENU_WIDTH;
+
+  return {
+    top: Math.max(12, defaultTop),
+    left: Math.max(
+      horizontalPadding,
+      Math.min(
+        window.innerWidth - ACTION_MENU_WIDTH - horizontalPadding,
+        defaultLeft
+      )
+    ),
+  };
 };
 
 const EmptyConversationState = ({ theme }) => (
@@ -233,36 +252,6 @@ const ComposerReplyPreview = ({
   </div>
 );
 
-const ComposerEditPreview = ({
-  theme,
-  editingMessage,
-  onCancelEditingMessage,
-}) => (
-  <div
-    className="flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-2"
-    style={{ background: theme.subtle }}
-  >
-    <div className="min-w-0 flex-1">
-      <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: theme.accent }}>
-        Editing message
-      </p>
-      <p className="mt-1 truncate text-sm" style={{ color: theme.text }}>
-        {truncateReplyContent(editingMessage?.content, 90)}
-      </p>
-    </div>
-    <button
-      type="button"
-      onClick={onCancelEditingMessage}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-none bg-transparent"
-      style={{ color: theme.muted }}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M18 6 6 18M6 6l12 12" />
-      </svg>
-    </button>
-  </div>
-);
-
 const MessageBubble = ({
   theme,
   message,
@@ -279,6 +268,7 @@ const MessageBubble = ({
   const touchStartRef = useRef(null);
   const hasTriggeredReplyRef = useRef(false);
   const longPressTimerRef = useRef(null);
+  const bubbleRef = useRef(null);
 
   const replyLabel = getReplyAuthorLabel(message.replyToSenderEmail, currentUserEmail, selectedUser);
 
@@ -297,13 +287,17 @@ const MessageBubble = ({
   };
 
   const startLongPress = () => {
-    if (!isOwnMessage || !onOpenMessageActions || message.isTemp) {
+    if (!isOwnMessage || !onOpenMessageActions || message.isTemp || message.isDeleted) {
       return;
     }
 
     clearLongPressTimer();
     longPressTimerRef.current = window.setTimeout(() => {
-      onOpenMessageActions(message);
+      const rect = bubbleRef.current?.getBoundingClientRect();
+      onOpenMessageActions({
+        message,
+        position: getActionMenuPosition(rect),
+      });
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(12);
       }
@@ -389,6 +383,7 @@ const MessageBubble = ({
           )}
 
           <div
+            ref={bubbleRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={() => {
@@ -403,11 +398,15 @@ const MessageBubble = ({
             onMouseUp={clearLongPressTimer}
             onMouseLeave={clearLongPressTimer}
             onContextMenu={(event) => {
-              if (!isOwnMessage || !onOpenMessageActions || message.isTemp) {
+              if (!isOwnMessage || !onOpenMessageActions || message.isTemp || message.isDeleted) {
                 return;
               }
               event.preventDefault();
-              onOpenMessageActions(message);
+              const rect = bubbleRef.current?.getBoundingClientRect();
+              onOpenMessageActions({
+                message,
+                position: getActionMenuPosition(rect),
+              });
             }}
             className={`px-3 py-1.5 ${
               isOwnMessage ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl rounded-bl-sm'
@@ -433,7 +432,14 @@ const MessageBubble = ({
             )}
 
             <p className="m-0 whitespace-pre-wrap text-[13px] leading-relaxed wrap-break-word">
+              <span
+                style={{
+                  opacity: message.isDeleted ? 0.7 : 1,
+                  fontStyle: message.isDeleted ? 'italic' : 'normal',
+                }}
+              >
               {message.content}
+              </span>
             </p>
 
             <div className="mt-0.5 flex items-center justify-end gap-1">
@@ -491,12 +497,13 @@ const ChatWindow = ({
   onCancelReply,
   onStartEditingMessage,
   onCancelEditingMessage,
+  onDeleteMessage,
 }) => {
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const orderedMessages = sortMessagesByTime(messages);
   const [showMenu, setShowMenu] = useState(false);
-  const [actionMessage, setActionMessage] = useState(null);
+  const [actionMenu, setActionMenu] = useState(null);
 
   useEffect(() => {
     if (!selectedUser?.isConnected || loading) {
@@ -597,7 +604,13 @@ const ChatWindow = ({
         style={{ borderColor: theme.border, background: theme.surface }}
       >
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (editingMessage) {
+              onCancelEditingMessage?.();
+              return;
+            }
+            onBack?.();
+          }}
           className="flex items-center gap-2 transition-colors hover:opacity-70 md:hidden"
           style={{ color: theme.text }}
         >
@@ -732,7 +745,7 @@ const ChatWindow = ({
                       selectedUser={selectedUser}
                       isCompactMobile={isCompactMobile}
                       onReplyMessage={onReplyMessage}
-                      onOpenMessageActions={setActionMessage}
+                      onOpenMessageActions={setActionMenu}
                     />
                   </div>
                 );
@@ -752,14 +765,6 @@ const ChatWindow = ({
                 currentUserEmail={currentUserEmail}
                 selectedUser={selectedUser}
                 onCancelReply={onCancelReply}
-              />
-            )}
-
-            {editingMessage && (
-              <ComposerEditPreview
-                theme={theme}
-                editingMessage={editingMessage}
-                onCancelEditingMessage={onCancelEditingMessage}
               />
             )}
 
@@ -794,8 +799,8 @@ const ChatWindow = ({
                 aria-label={editingMessage ? 'Save edited message' : 'Send message'}
               >
                 {editingMessage ? (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 6 9 17l-5-5" />
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12.5 9.2 16.5 19 7.5" />
                   </svg>
                 ) : (
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -809,44 +814,55 @@ const ChatWindow = ({
         </>
       )}
 
-      {actionMessage && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/35 p-4 md:items-center">
+      {actionMenu && (
+        <div className="fixed inset-0 z-[60]">
           <button
             type="button"
             aria-label="Close message actions"
             className="absolute inset-0 border-none bg-transparent"
-            onClick={() => setActionMessage(null)}
+            onClick={() => setActionMenu(null)}
           />
           <div
-            className="relative z-10 w-full max-w-sm rounded-3xl border p-2 shadow-2xl"
+            className="absolute z-10 w-[180px] overflow-hidden rounded-2xl border p-1.5 shadow-2xl"
             style={{
+              top: `${actionMenu.position.top}px`,
+              left: `${actionMenu.position.left}px`,
               background: theme.surface,
               borderColor: theme.border,
-              boxShadow: `0 20px 50px ${theme.shadow}`,
+              boxShadow: `0 18px 40px ${theme.shadow}`,
             }}
           >
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-2xl border-none px-4 py-3 text-left text-sm"
+              className="flex w-full items-center justify-between rounded-xl border-none px-3 py-2.5 text-left text-sm"
               style={{ background: 'transparent', color: theme.text }}
               onClick={() => {
-                onStartEditingMessage?.(actionMessage);
-                setActionMessage(null);
+                onStartEditingMessage?.(actionMenu.message);
+                setActionMenu(null);
               }}
             >
               <span>Edit message</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 17.25V21h3.75L18 9.75 14.25 6 3 17.25Z" />
+                <path d="M13.5 6.75 17.25 10.5" />
               </svg>
             </button>
             <button
               type="button"
-              className="mt-1 flex w-full items-center justify-center rounded-2xl border-none px-4 py-3 text-sm"
-              style={{ background: theme.pageBackground, color: theme.muted }}
-              onClick={() => setActionMessage(null)}
+              className="mt-1 flex w-full items-center justify-between rounded-xl border-none px-3 py-2.5 text-left text-sm"
+              style={{ background: 'transparent', color: '#dc2626' }}
+              onClick={() => {
+                onDeleteMessage?.(actionMenu.message);
+                setActionMenu(null);
+              }}
             >
-              Cancel
+              <span>Delete message</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
             </button>
           </div>
         </div>

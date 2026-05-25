@@ -14,6 +14,7 @@ const useWebSocket = ({
   onReadReceipt,
   onUnreadCountUpdate,
   onMessageEdited,
+  onMessageDeleted,
   onTypingStatus,
 }) => {
   const stompClientRef = useRef(null);
@@ -24,6 +25,7 @@ const useWebSocket = ({
   const onReadReceiptRef = useRef(onReadReceipt);
   const onUnreadCountUpdateRef = useRef(onUnreadCountUpdate);
   const onMessageEditedRef = useRef(onMessageEdited);
+  const onMessageDeletedRef = useRef(onMessageDeleted);
   const onTypingStatusRef = useRef(onTypingStatus);
 
   useEffect(() => {
@@ -53,6 +55,10 @@ const useWebSocket = ({
   useEffect(() => {
     onMessageEditedRef.current = onMessageEdited;
   }, [onMessageEdited]);
+
+  useEffect(() => {
+    onMessageDeletedRef.current = onMessageDeleted;
+  }, [onMessageDeleted]);
 
   useEffect(() => {
     onTypingStatusRef.current = onTypingStatus;
@@ -139,6 +145,8 @@ const useWebSocket = ({
               onReadReceiptRef.current?.(data);
             } else if (data.type === 'MESSAGE_EDITED') {
               onMessageEditedRef.current?.(data);
+            } else if (data.type === 'MESSAGE_DELETED') {
+              onMessageDeletedRef.current?.(data);
             } else if (data.type === 'TYPING') {
               onTypingStatusRef.current?.(data);
             } else if (data.type === 'MESSAGE') {
