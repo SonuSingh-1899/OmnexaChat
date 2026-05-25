@@ -25,7 +25,7 @@ const InputField = ({
 
       <div className={`flex items-center gap-3 rounded-2xl border px-4 py-3.5 transition-all duration-200 ${
         error
-          ? 'border-red-400 bg-red-50/60'
+          ? 'border-red-450 bg-red-50/60'
           : focused
             ? 'border-zinc-950 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
             : 'border-zinc-200 bg-zinc-50/70'
