@@ -233,6 +233,36 @@ const ComposerReplyPreview = ({
   </div>
 );
 
+const ComposerEditPreview = ({
+  theme,
+  editingMessage,
+  onCancelEditingMessage,
+}) => (
+  <div
+    className="flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-2"
+    style={{ background: theme.subtle }}
+  >
+    <div className="min-w-0 flex-1">
+      <p className="m-0 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: theme.accent }}>
+        Editing message
+      </p>
+      <p className="mt-1 truncate text-sm" style={{ color: theme.text }}>
+        {truncateReplyContent(editingMessage?.content, 90)}
+      </p>
+    </div>
+    <button
+      type="button"
+      onClick={onCancelEditingMessage}
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-none bg-transparent"
+      style={{ color: theme.muted }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+);
+
 const MessageBubble = ({
   theme,
   message,
@@ -242,11 +272,13 @@ const MessageBubble = ({
   selectedUser,
   isCompactMobile,
   onReplyMessage,
+  onOpenMessageActions,
 }) => {
   const [dragOffset, setDragOffset] = useState(0);
   const [showReplyHint, setShowReplyHint] = useState(false);
   const touchStartRef = useRef(null);
   const hasTriggeredReplyRef = useRef(false);
+  const longPressTimerRef = useRef(null);
 
   const replyLabel = getReplyAuthorLabel(message.replyToSenderEmail, currentUserEmail, selectedUser);
 
@@ -257,7 +289,30 @@ const MessageBubble = ({
     setShowReplyHint(false);
   };
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = () => {
+    if (!isOwnMessage || !onOpenMessageActions || message.isTemp) {
+      return;
+    }
+
+    clearLongPressTimer();
+    longPressTimerRef.current = window.setTimeout(() => {
+      onOpenMessageActions(message);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(12);
+      }
+    }, 450);
+  };
+
   const handleTouchStart = (event) => {
+    startLongPress();
+
     if (!isCompactMobile || !onReplyMessage) {
       return;
     }
@@ -274,6 +329,8 @@ const MessageBubble = ({
   };
 
   const handleTouchMove = (event) => {
+    clearLongPressTimer();
+
     if (!isCompactMobile || !touchStartRef.current || hasTriggeredReplyRef.current) {
       return;
     }
@@ -308,6 +365,10 @@ const MessageBubble = ({
   const bubbleBackground = isOwnMessage ? theme.accent : theme.surface;
   const bubbleText = isOwnMessage ? theme.accentText : theme.text;
 
+  useEffect(() => () => {
+    clearLongPressTimer();
+  }, []);
+
   return (
     <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -330,8 +391,24 @@ const MessageBubble = ({
           <div
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
-            onTouchEnd={resetReplyGesture}
-            onTouchCancel={resetReplyGesture}
+            onTouchEnd={() => {
+              clearLongPressTimer();
+              resetReplyGesture();
+            }}
+            onTouchCancel={() => {
+              clearLongPressTimer();
+              resetReplyGesture();
+            }}
+            onMouseDown={startLongPress}
+            onMouseUp={clearLongPressTimer}
+            onMouseLeave={clearLongPressTimer}
+            onContextMenu={(event) => {
+              if (!isOwnMessage || !onOpenMessageActions || message.isTemp) {
+                return;
+              }
+              event.preventDefault();
+              onOpenMessageActions(message);
+            }}
             className={`px-3 py-1.5 ${
               isOwnMessage ? 'rounded-2xl rounded-br-sm' : 'rounded-2xl rounded-bl-sm'
             }`}
@@ -396,6 +473,8 @@ const ChatWindow = ({
   messages,
   newMessage,
   replyingTo,
+  editingMessage,
+  typingUserEmail,
   loading,
   sending,
   currentUserEmail,
@@ -410,11 +489,14 @@ const ChatWindow = ({
   onMarkAsRead,
   onReplyMessage,
   onCancelReply,
+  onStartEditingMessage,
+  onCancelEditingMessage,
 }) => {
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const orderedMessages = sortMessagesByTime(messages);
   const [showMenu, setShowMenu] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
 
   useEffect(() => {
     if (!selectedUser?.isConnected || loading) {
@@ -456,12 +538,12 @@ const ChatWindow = ({
   }, [selectedUser?.email, selectedUser?.isConnected, onMarkAsRead]);
 
   useEffect(() => {
-    if (!replyingTo) {
+    if (!replyingTo && !editingMessage) {
       return;
     }
 
     inputRef.current?.focus();
-  }, [replyingTo]);
+  }, [editingMessage, replyingTo]);
 
   const handleScroll = () => {
     if (!selectedUser?.isConnected) {
@@ -496,6 +578,7 @@ const ChatWindow = ({
   }
 
   const isUserOnline = Boolean(selectedUser.isActive);
+  const isTyping = Boolean(typingUserEmail) && typingUserEmail === selectedUser.email;
   const userStatusText = selectedUser.isConnected
     ? isUserOnline
       ? 'Online'
@@ -505,7 +588,7 @@ const ChatWindow = ({
       : selectedUser.isRequestSent
         ? 'Pending request'
         : 'Not connected';
-  const conversationSubtitle = getConversationSubtitle(selectedUser);
+  const conversationSubtitle = isTyping ? 'typing...' : getConversationSubtitle(selectedUser);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -544,8 +627,8 @@ const ChatWindow = ({
             <span
               className="whitespace-nowrap rounded-full px-2 py-1 text-[11px]"
               style={{
-                background: isUserOnline ? theme.subtle : theme.pageBackground,
-                color: isUserOnline ? theme.accent : theme.muted,
+                background: isTyping ? theme.subtle : isUserOnline ? theme.subtle : theme.pageBackground,
+                color: isTyping ? theme.accent : isUserOnline ? theme.accent : theme.muted,
               }}
             >
               {userStatusText}
@@ -649,6 +732,7 @@ const ChatWindow = ({
                       selectedUser={selectedUser}
                       isCompactMobile={isCompactMobile}
                       onReplyMessage={onReplyMessage}
+                      onOpenMessageActions={setActionMessage}
                     />
                   </div>
                 );
@@ -671,13 +755,27 @@ const ChatWindow = ({
               />
             )}
 
+            {editingMessage && (
+              <ComposerEditPreview
+                theme={theme}
+                editingMessage={editingMessage}
+                onCancelEditingMessage={onCancelEditingMessage}
+              />
+            )}
+
             <div className="flex items-center gap-2">
               <input
                 ref={inputRef}
                 type="text"
                 value={newMessage}
                 onChange={(event) => onNewMessageChange(event.target.value)}
-                placeholder={replyingTo ? 'Write your reply...' : 'Type a new message...'}
+                placeholder={
+                  editingMessage
+                    ? 'Edit your message...'
+                    : replyingTo
+                      ? 'Write your reply...'
+                      : 'Type a new message...'
+                }
                 disabled={sending}
                 className="chat-message-input flex-1 rounded-full px-3.5 py-2 text-sm outline-none transition-all"
                 style={{
@@ -693,15 +791,65 @@ const ChatWindow = ({
                 disabled={sending || !newMessage.trim()}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                 style={{ background: theme.accent, color: theme.accentText }}
+                aria-label={editingMessage ? 'Save edited message' : 'Send message'}
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+                {editingMessage ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                )}
               </button>
             </div>
           </form>
         </>
+      )}
+
+      {actionMessage && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/35 p-4 md:items-center">
+          <button
+            type="button"
+            aria-label="Close message actions"
+            className="absolute inset-0 border-none bg-transparent"
+            onClick={() => setActionMessage(null)}
+          />
+          <div
+            className="relative z-10 w-full max-w-sm rounded-3xl border p-2 shadow-2xl"
+            style={{
+              background: theme.surface,
+              borderColor: theme.border,
+              boxShadow: `0 20px 50px ${theme.shadow}`,
+            }}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-2xl border-none px-4 py-3 text-left text-sm"
+              style={{ background: 'transparent', color: theme.text }}
+              onClick={() => {
+                onStartEditingMessage?.(actionMessage);
+                setActionMessage(null);
+              }}
+            >
+              <span>Edit message</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="mt-1 flex w-full items-center justify-center rounded-2xl border-none px-4 py-3 text-sm"
+              style={{ background: theme.pageBackground, color: theme.muted }}
+              onClick={() => setActionMessage(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <style>{`

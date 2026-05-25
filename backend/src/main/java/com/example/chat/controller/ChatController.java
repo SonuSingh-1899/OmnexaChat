@@ -11,6 +11,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import com.example.chat.DTO.TypingStatusRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.service.ChatService;
 import com.example.chat.service.FirebasePushNotificationService;
@@ -77,5 +78,19 @@ public class ChatController {
 
     private String buildInboxDestination(String email) {
         return "/topic/messages/" + email;
+    }
+
+    @MessageMapping("/chat.typing")
+    public void sendTypingStatus(@Payload TypingStatusRequest typingStatusRequest) {
+        Map<String, Object> typingPayload = new HashMap<>();
+        typingPayload.put("type", "TYPING");
+        typingPayload.put("senderEmail", typingStatusRequest.getSenderEmail());
+        typingPayload.put("receiverEmail", typingStatusRequest.getReceiverEmail());
+        typingPayload.put("isTyping", typingStatusRequest.isTyping());
+
+        messagingTemplate.convertAndSend(
+            buildInboxDestination(typingStatusRequest.getReceiverEmail()),
+            typingPayload
+        );
     }
 }

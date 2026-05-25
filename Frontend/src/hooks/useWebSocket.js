@@ -13,6 +13,8 @@ const useWebSocket = ({
   onUserLastMessageUpdate,
   onReadReceipt,
   onUnreadCountUpdate,
+  onMessageEdited,
+  onTypingStatus,
 }) => {
   const stompClientRef = useRef(null);
   const selectedUserEmailRef = useRef(selectedUserEmail);
@@ -21,6 +23,8 @@ const useWebSocket = ({
   const onUserLastMessageUpdateRef = useRef(onUserLastMessageUpdate);
   const onReadReceiptRef = useRef(onReadReceipt);
   const onUnreadCountUpdateRef = useRef(onUnreadCountUpdate);
+  const onMessageEditedRef = useRef(onMessageEdited);
+  const onTypingStatusRef = useRef(onTypingStatus);
 
   useEffect(() => {
     selectedUserEmailRef.current = selectedUserEmail;
@@ -45,6 +49,14 @@ const useWebSocket = ({
   useEffect(() => {
     onUnreadCountUpdateRef.current = onUnreadCountUpdate;
   }, [onUnreadCountUpdate]);
+
+  useEffect(() => {
+    onMessageEditedRef.current = onMessageEdited;
+  }, [onMessageEdited]);
+
+  useEffect(() => {
+    onTypingStatusRef.current = onTypingStatus;
+  }, [onTypingStatus]);
 
   const sendReadReceipt = useCallback((senderEmail, messageId = null) => {
     const client = stompClientRef.current;
@@ -76,6 +88,28 @@ const useWebSocket = ({
     }
   }, [currentUserEmail]);
 
+  const sendTypingStatus = useCallback((receiverEmail, isTyping) => {
+    const client = stompClientRef.current;
+    if (!client || !client.connected || !currentUserEmail || !receiverEmail) {
+      return false;
+    }
+
+    try {
+      client.publish({
+        destination: '/app/chat.typing',
+        body: JSON.stringify({
+          senderEmail: currentUserEmail,
+          receiverEmail,
+          typing: Boolean(isTyping),
+        }),
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to send typing status:', error);
+      return false;
+    }
+  }, [currentUserEmail]);
+
   const connect = useCallback(() => {
     const token = session.getToken();
 
@@ -103,6 +137,10 @@ const useWebSocket = ({
             } else if (data.type === 'MESSAGE_READ') {
               console.log(`Single message read: ${data.messageId}`);
               onReadReceiptRef.current?.(data);
+            } else if (data.type === 'MESSAGE_EDITED') {
+              onMessageEditedRef.current?.(data);
+            } else if (data.type === 'TYPING') {
+              onTypingStatusRef.current?.(data);
             } else if (data.type === 'MESSAGE') {
               const message = data.message;
               const isActiveConversation = message.senderEmail === selectedUserEmailRef.current;
@@ -179,7 +217,7 @@ const useWebSocket = ({
     };
   }, [connect, currentUserEmail]);
 
-  return { sendReadReceipt };
+  return { sendReadReceipt, sendTypingStatus };
 };
 
 export default useWebSocket;

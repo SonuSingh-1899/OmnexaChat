@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { chatApi, profileApi } from '../lib/api';
 import useWebSocket from './useWebSocket';
 
 const USER_REFRESH_INTERVAL = 20000;
 const SEARCH_DEBOUNCE_MS = 250;
+const TYPING_IDLE_MS = 1200;
 
 const getTimestampValue = (timestamp) => {
   const resolvedTimestamp = new Date(timestamp).getTime();
@@ -30,6 +31,15 @@ const updateUserPreview = (userList, email, content, timestamp) =>
       ? { ...chatUser, lastMessage: content, lastMessageTime: timestamp }
       : chatUser
   );
+
+const updateSelectedUserPreview = (selectedUser, content, timestamp) =>
+  selectedUser
+    ? {
+        ...selectedUser,
+        lastMessage: content,
+        lastMessageTime: timestamp,
+      }
+    : selectedUser;
 
 const createReplySnapshot = (message) => {
   if (!message?.id || !message?.content || !message?.senderEmail) {
@@ -70,6 +80,15 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
   const [unreadCounts, setUnreadCounts] = useState({});
   const [unreadTotal, setUnreadTotal] = useState(0);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [typingUserEmail, setTypingUserEmail] = useState('');
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const selectedUserRef = useRef(selectedUser);
+
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
 
   const normalizeUnreadCount = useCallback((nextCount) => Math.max(0, Number(nextCount) || 0), []);
 
@@ -262,6 +281,9 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
 
   const handleIncomingMessage = useCallback((incomingMessage) => {
     setMessages((currentMessages) => addMessageIfMissing(currentMessages, incomingMessage));
+    setTypingUserEmail((currentTypingUserEmail) =>
+      incomingMessage.senderEmail === currentTypingUserEmail ? '' : currentTypingUserEmail
+    );
 
     const isFromSelectedUser = incomingMessage.senderEmail === selectedUser?.email;
     const isCurrentUserSender = incomingMessage.senderEmail === user?.email;
@@ -370,17 +392,82 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     }
   }, [applyUnreadCountUpdate, user?.email]);
 
-  useWebSocket({
+  const handleMessageEdited = useCallback(({ message, isLatestInConversation }) => {
+    if (!message?.id) {
+      return;
+    }
+
+    setMessages((currentMessages) =>
+      sortMessagesByTime(
+        currentMessages.map((currentMessage) =>
+          currentMessage.id === message.id
+            ? { ...currentMessage, ...message }
+            : currentMessage
+        )
+      )
+    );
+
+    if (isLatestInConversation) {
+      setConnectedUsers((currentUsers) =>
+        updateUserPreview(
+          currentUsers,
+          message.senderEmail === user?.email ? message.receiverEmail : message.senderEmail,
+          message.content,
+          message.timestamp
+        )
+      );
+
+      setSelectedUser((currentSelectedUser) => {
+        const isConversationMatch =
+          currentSelectedUser?.email === message.senderEmail ||
+          currentSelectedUser?.email === message.receiverEmail;
+
+        return isConversationMatch
+          ? updateSelectedUserPreview(currentSelectedUser, message.content, message.timestamp)
+          : currentSelectedUser;
+      });
+    }
+
+    setEditingMessage((currentEditingMessage) =>
+      currentEditingMessage?.id === message.id ? null : currentEditingMessage
+    );
+  }, [user?.email]);
+
+  const handleTypingStatus = useCallback(({ senderEmail, isTyping }) => {
+    if (!senderEmail) {
+      return;
+    }
+
+    const isCurrentConversation = selectedUserRef.current?.email === senderEmail;
+    if (!isCurrentConversation) {
+      return;
+    }
+
+    setTypingUserEmail(isTyping ? senderEmail : '');
+  }, []);
+
+  const { sendTypingStatus } = useWebSocket({
     currentUserEmail: user?.email,
     selectedUserEmail: selectedUser?.email || '',
     onMessageReceived: handleIncomingMessage,
     onMessageEnvelope: handleSidebarMessageEvent,
     onUserLastMessageUpdate: handleUserPreviewUpdate,
     onReadReceipt: handleReadReceipt,
+    onMessageEdited: handleMessageEdited,
+    onTypingStatus: handleTypingStatus,
     onUnreadCountUpdate: (senderEmail, unreadCount) => {
       applyUnreadCountUpdate(senderEmail, unreadCount);
     },
   });
+
+  const stopTyping = useCallback((receiverEmail) => {
+    if (!receiverEmail || !isTypingRef.current) {
+      return;
+    }
+
+    isTypingRef.current = false;
+    sendTypingStatus(receiverEmail, false);
+  }, [sendTypingStatus]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -443,19 +530,27 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
 
   const selectUser = useCallback(async (chatUser) => {
     if (!chatUser?.email) return;
+    stopTyping(selectedUserRef.current?.email);
     setReplyingTo(null);
+    setEditingMessage(null);
+    setTypingUserEmail('');
+    setNewMessage('');
     setSelectedUser(chatUser);
     await loadConversation(chatUser);
     if (chatUser.isConnected && chatUser.email) {
       await markConversationAsRead(chatUser.email);
     }
-  }, [loadConversation, markConversationAsRead]);
+  }, [loadConversation, markConversationAsRead, stopTyping]);
 
   const clearSelectedUser = useCallback(() => {
+    stopTyping(selectedUserRef.current?.email);
     setSelectedUser(null);
     setMessages([]);
     setReplyingTo(null);
-  }, []);
+    setEditingMessage(null);
+    setTypingUserEmail('');
+    setNewMessage('');
+  }, [stopTyping]);
 
   const startReply = useCallback((message) => {
     const replySnapshot = createReplySnapshot(message);
@@ -463,11 +558,31 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
       return;
     }
 
+    setEditingMessage(null);
     setReplyingTo(replySnapshot);
   }, []);
 
   const cancelReply = useCallback(() => {
     setReplyingTo(null);
+  }, []);
+
+  const startEditingMessage = useCallback((message) => {
+    if (!message?.id || message.senderEmail !== user?.email || message.isTemp) {
+      return;
+    }
+
+    setReplyingTo(null);
+    setEditingMessage({
+      id: message.id,
+      content: message.content,
+      receiverEmail: message.receiverEmail,
+    });
+    setNewMessage(message.content || '');
+  }, [user?.email]);
+
+  const cancelEditingMessage = useCallback(() => {
+    setEditingMessage(null);
+    setNewMessage('');
   }, []);
 
   const syncAfterRelationshipChange = useCallback(async () => {
@@ -571,7 +686,75 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
   const sendMessage = useCallback(async (event) => {
     event.preventDefault();
     if (!newMessage.trim() || !selectedUser || !selectedUser.isConnected || sendingMessage) return;
+
     const content = newMessage.trim();
+
+    if (editingMessage?.id) {
+      const previousContent = editingMessage.content;
+      const latestMessage = sortMessagesByTime(messages)[messages.length - 1];
+      const isLatestMessage = latestMessage?.id === editingMessage.id;
+      const latestMessageTimestamp = latestMessage?.timestamp;
+      setSendingMessage(true);
+      setNewMessage('');
+      setEditingMessage(null);
+      stopTyping(selectedUser.email);
+
+      setMessages((currentMessages) =>
+        sortMessagesByTime(
+          currentMessages.map((message) =>
+            message.id === editingMessage.id
+              ? { ...message, content }
+              : message
+          )
+        )
+      );
+
+      if (isLatestMessage) {
+        setConnectedUsers((currentUsers) =>
+          updateUserPreview(currentUsers, selectedUser.email, content, latestMessageTimestamp)
+        );
+        setSelectedUser((currentSelectedUser) =>
+          updateSelectedUserPreview(
+            currentSelectedUser,
+            content,
+            latestMessageTimestamp
+          )
+        );
+      }
+
+      try {
+        await chatApi.editMessage(editingMessage.id, { content });
+      } catch (error) {
+        console.error('Failed to edit message:', error);
+        setEditingMessage((currentEditingMessage) => currentEditingMessage || editingMessage);
+        setNewMessage(content);
+        setMessages((currentMessages) =>
+          sortMessagesByTime(
+            currentMessages.map((message) =>
+              message.id === editingMessage.id
+                ? { ...message, content: previousContent }
+                : message
+            )
+          )
+        );
+        if (isLatestMessage) {
+          setConnectedUsers((currentUsers) =>
+            updateUserPreview(currentUsers, selectedUser.email, previousContent, latestMessageTimestamp)
+          );
+          setSelectedUser((currentSelectedUser) =>
+            updateSelectedUserPreview(
+              currentSelectedUser,
+              previousContent,
+              latestMessageTimestamp
+            )
+          );
+        }
+      } finally {
+        setSendingMessage(false);
+      }
+      return;
+    }
+
     const tempMessageId = Date.now();
     const sentAt = new Date().toISOString();
     const activeReply = replyingTo;
@@ -588,20 +771,13 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     };
     setNewMessage('');
     setReplyingTo(null);
+    stopTyping(selectedUser.email);
     setSendingMessage(true);
     setMessages((currentMessages) => sortMessagesByTime([...currentMessages, temporaryMessage]));
     setConnectedUsers((currentUsers) =>
       updateUserPreview(currentUsers, selectedUser.email, content, sentAt)
     );
-    setSelectedUser((currentSelectedUser) =>
-      currentSelectedUser
-        ? {
-            ...currentSelectedUser,
-            lastMessage: content,
-            lastMessageTime: sentAt,
-          }
-        : currentSelectedUser
-    );
+    setSelectedUser((currentSelectedUser) => updateSelectedUserPreview(currentSelectedUser, content, sentAt));
     try {
       const savedMessage = await chatApi.sendMessage({
         receiverEmail: selectedUser.email,
@@ -631,7 +807,59 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     } finally {
       setSendingMessage(false);
     }
-  }, [newMessage, replyingTo, selectedUser, sendingMessage, user?.email]);
+  }, [editingMessage, messages, newMessage, replyingTo, selectedUser, sendingMessage, stopTyping, user?.email]);
+
+  useEffect(() => {
+    const receiverEmail = selectedUser?.isConnected ? selectedUser.email : '';
+
+    if (!receiverEmail) {
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      isTypingRef.current = false;
+      return;
+    }
+
+    const hasDraft = Boolean(newMessage.trim());
+
+    if (!hasDraft) {
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      stopTyping(receiverEmail);
+      return;
+    }
+
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      sendTypingStatus(receiverEmail, true);
+    }
+
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = window.setTimeout(() => {
+      stopTyping(receiverEmail);
+      typingTimeoutRef.current = null;
+    }, TYPING_IDLE_MS);
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    };
+  }, [editingMessage, newMessage, selectedUser?.email, selectedUser?.isConnected, sendTypingStatus, stopTyping]);
+
+  useEffect(() => () => {
+    if (typingTimeoutRef.current) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+    stopTyping(selectedUserRef.current?.email);
+  }, [stopTyping]);
 
   return {
     users: connectedUsers,
@@ -642,6 +870,8 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     newMessage,
     setNewMessage,
     replyingTo,
+    editingMessage,
+    typingUserEmail,
     loading: loadingMessages,
     sending: sendingMessage,
     searchingUsers,
@@ -652,6 +882,8 @@ export default function useChat({ user, searchQuery, onConnectionChange, onNotif
     clearSelectedUser,
     startReply,
     cancelReply,
+    startEditingMessage,
+    cancelEditingMessage,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,

@@ -16,6 +16,11 @@
   box-sizing: border-box;
 }
 
+html, body {
+  overflow-x: hidden;
+  touch-action: pan-x pan-y;
+}
+
 html,
 body,
 #root {

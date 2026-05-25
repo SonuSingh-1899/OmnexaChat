@@ -235,6 +235,8 @@ const Dashboard = ({
     newMessage,
     setNewMessage,
     replyingTo,
+    editingMessage,
+    typingUserEmail,
     loading,
     sending,
     searchingUsers,
@@ -245,6 +247,8 @@ const Dashboard = ({
     clearSelectedUser,
     startReply,
     cancelReply,
+    startEditingMessage,
+    cancelEditingMessage,
     sendMessage,
     sendFollowRequest,
     acceptFollowRequest,
@@ -411,6 +415,8 @@ const Dashboard = ({
             messages={messages}
             newMessage={newMessage}
             replyingTo={replyingTo}
+            editingMessage={editingMessage}
+            typingUserEmail={typingUserEmail}
             loading={loading}
             sending={sending}
             currentUserEmail={user?.email}
@@ -425,6 +431,8 @@ const Dashboard = ({
             onMarkAsRead={markConversationAsRead}
             onReplyMessage={startReply}
             onCancelReply={cancelReply}
+            onStartEditingMessage={startEditingMessage}
+            onCancelEditingMessage={cancelEditingMessage}
           />
           </div>
         )}

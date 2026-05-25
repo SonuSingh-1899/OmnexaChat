@@ -14,6 +14,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     
        
     List<ChatMessage> findByRoomIdOrderByTimestampDesc(String roomId, Pageable pageable);
+    ChatMessage findTopByRoomIdOrderByTimestampDesc(String roomId);
     
     @Query("SELECT m FROM ChatMessage m WHERE (m.senderEmail = :user1 AND m.receiverEmail = :user2) OR (m.senderEmail = :user2 AND m.receiverEmail = :user1) ORDER BY m.timestamp DESC")
     List<ChatMessage> findConversation(@Param("user1") String user1, @Param("user2") String user2, Pageable pageable);

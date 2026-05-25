@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.entity.ChatMessage.MessageType;
+import com.example.chat.exception.BusinessException;
 import com.example.chat.repository.ChatMessageRepository;
 
 @Service
@@ -62,5 +63,35 @@ public class ChatService {
 
     public long getUnreadCountForSender(String senderEmail, String receiverEmail) {
         return chatRepository.countUnreadFromSender(senderEmail, receiverEmail);
+    }
+
+    public ChatMessage editMessage(String currentUserEmail, Long messageId, String content) {
+        ChatMessage message = chatRepository.findById(messageId)
+            .orElseThrow(() -> new BusinessException("Message not found"));
+
+        if (!message.getSenderEmail().equalsIgnoreCase(currentUserEmail)) {
+            throw new BusinessException("You can edit only your own messages");
+        }
+
+        if (message.isDeleted()) {
+            throw new BusinessException("Deleted message cannot be edited");
+        }
+
+        String normalizedContent = content == null ? "" : content.trim();
+        if (normalizedContent.isBlank()) {
+            throw new BusinessException("Message content is required");
+        }
+
+        message.setContent(normalizedContent);
+        return chatRepository.save(message);
+    }
+
+    public boolean isLatestMessageInConversation(ChatMessage message) {
+        if (message == null || message.getRoomId() == null) {
+            return false;
+        }
+
+        ChatMessage latestMessage = chatRepository.findTopByRoomIdOrderByTimestampDesc(message.getRoomId());
+        return latestMessage != null && latestMessage.getId().equals(message.getId());
     }
 }

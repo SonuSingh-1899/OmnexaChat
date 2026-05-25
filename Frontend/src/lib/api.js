@@ -187,6 +187,10 @@ export const chatApi = {
     const { data } = await api.post('/api/chat/messages', payload);
     return data;
   },
+  editMessage: async (messageId, payload) => {
+    const { data } = await api.put(`/api/chat/messages/${messageId}`, payload);
+    return data;
+  },
   markAsRead: async (senderEmail) => {
     const { data } = await api.post(`/api/chat/read/${senderEmail}`);
     return data;

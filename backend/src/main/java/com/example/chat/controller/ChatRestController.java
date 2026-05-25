@@ -10,11 +10,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.chat.DTO.ChatMessageEditRequest;
 import com.example.chat.DTO.ChatMessageRequest;
 import com.example.chat.entity.ChatMessage;
 import com.example.chat.exception.BusinessException;
@@ -88,6 +90,28 @@ public class ChatRestController {
         messagingTemplate.convertAndSend(buildInboxDestination(message.getReceiverEmail()), message);
 
         return ResponseEntity.ok(message);
+    }
+
+    @PutMapping("/messages/{messageId}")
+    public ResponseEntity<ChatMessage> editMessage(
+            @PathVariable Long messageId,
+            @Valid @RequestBody ChatMessageEditRequest request) {
+        ChatMessage updatedMessage = chatService.editMessage(
+            userProfileService.getCurrentUserEmail(),
+            messageId,
+            request.getContent()
+        );
+
+        boolean isLatestInConversation = chatService.isLatestMessageInConversation(updatedMessage);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "MESSAGE_EDITED");
+        payload.put("message", updatedMessage);
+        payload.put("isLatestInConversation", isLatestInConversation);
+
+        messagingTemplate.convertAndSend(buildInboxDestination(updatedMessage.getSenderEmail()), payload);
+        messagingTemplate.convertAndSend(buildInboxDestination(updatedMessage.getReceiverEmail()), payload);
+
+        return ResponseEntity.ok(updatedMessage);
     }
 
     private String buildInboxDestination(String email) {
