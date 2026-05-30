@@ -95,7 +95,7 @@ The frontend is designed for deployment on Vercel, while the backend includes Do
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/SonuSingh-1899/OmnexaChat.git
 cd Chat-in-public
 ```
 
