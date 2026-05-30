@@ -130,7 +130,7 @@ const Login = ({ onNavigateToSignup, onNavigateToForgotPassword, onLoginSuccess,
         </button>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 px-4 py-3 text-xs leading-6 text-zinc-600">
-          Use the same Omnexa identity to continue chats, profile updates, and notifications without switching flows.
+          Use the same Omnexa identity to continue chats without switching flows.
         </div>
 
         <div className="text-center mt-5 text-sm text-zinc-500">

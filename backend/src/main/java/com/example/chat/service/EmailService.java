@@ -13,7 +13,7 @@ import jakarta.annotation.PostConstruct;
 import java.util.Collections;
 
 @Service
-public class EmailService {  // ✅ Same name rakho
+public class EmailService { 
 
     @Value("${brevo.api.key}")
     private String apiKey;

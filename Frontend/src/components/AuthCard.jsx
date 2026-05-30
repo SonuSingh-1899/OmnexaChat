@@ -67,7 +67,7 @@ const BrandPanel = ({ content, showLogo }) => (
     </div>
 
     <div className="relative my-10 lg:my-0">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-zinc-400">
+      <p className="text-sm font-semibold uppercase pt-5 tracking-[0.24em] text-zinc-400">
         {content.label}
       </p>
       <h2 className="mt-4 max-w-xl font-['Fraunces'] text-4xl font-semibold leading-tight tracking-[-0.04em] sm:text-5xl">
@@ -89,7 +89,7 @@ const BrandPanel = ({ content, showLogo }) => (
       </div>
     </div>
 
-    <div className="relative flex items-center justify-between border-t border-white/10 pt-6 text-sm text-zinc-400">
+    <div className="relative flex items-center justify-between  pt-6 text-sm text-zinc-400">
       <span>Simple. Secure.</span>
       {showLogo && <span className="font-medium text-zinc-200">Welcome to Omnexa</span>}
     </div>
@@ -98,7 +98,7 @@ const BrandPanel = ({ content, showLogo }) => (
 
 const AuthPanel = ({ children, title, subtitle, showBack, onBack, showLogo }) => (
   <section className="flex items-center justify-center bg-[radial-gradient(circle_at_top,#ffffff_0%,#f4f4f5_48%,#e4e4e7_100%)] ">
-    <div className="w-full max-w-md rounded-4xl border border-white/70 bg-white/92 p-5 shadow-[0_25px_60px_rgba(15,23,42,0.10)] backdrop-blur-xl sm:p-7">
+    <div className="w-full max-w-md p-5 sm:p-7">
       {showLogo && (
         <div className="mb-7 rounded-3xl border border-zinc-200/80 bg-zinc-50/90 px-4 py-4 lg:hidden">
           <BrandMark compact />
